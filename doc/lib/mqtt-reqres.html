@@ -66,7 +66,9 @@
   <span class="hljs-keyword">var</span> EventEmitter = <span class="hljs-built_in">require</span>(<span class="hljs-string">'events'</span>);
   <span class="hljs-keyword">var</span> CryptoJS = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./crypto-js/cryptojs-module.js'</span>);
   <span class="hljs-keyword">var</span> debug = <span class="hljs-built_in">require</span>(<span class="hljs-string">'debug'</span>)(<span class="hljs-string">'mqtt-reqres'</span>);
-  <span class="hljs-keyword">var</span> noop = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{};</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="class-mqttreqres">class MqttReqRes</h3>
+  <span class="hljs-keyword">var</span> noop = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{};
+
+  <span class="hljs-keyword">var</span> MAX_CHUNK_SIZE = <span class="hljs-number">1024</span> * <span class="hljs-number">64</span>;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="class-mqttreqres">class MqttReqRes</h3>
 <h4 id="constructoroptions">constructor(options)</h4>
 <p>  options:</p>
 <ul>
@@ -135,7 +137,12 @@
 
     debug(<span class="hljs-string">'initialize()'</span>, options);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>remove all internal listeners</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">this</span>.removeAllListeners(<span class="hljs-string">'_broker-connect'</span>);
     <span class="hljs-keyword">this</span>.removeAllListeners(<span class="hljs-string">'_response'</span>);
-    <span class="hljs-keyword">this</span>.removeAllListeners(<span class="hljs-string">'_client-connack'</span>);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>this.removeAllListeners(&#39;_client-connect&#39;);</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">this</span>.mqttClient = <span class="hljs-literal">null</span>;
+    <span class="hljs-keyword">this</span>.removeAllListeners(<span class="hljs-string">'_client-connack'</span>);
+    <span class="hljs-keyword">this</span>.removeAllListeners(<span class="hljs-string">'_stream-request-chunk'</span>);
+    <span class="hljs-keyword">this</span>.removeAllListeners(<span class="hljs-string">'_stream-on-request-chunk'</span>);
+    <span class="hljs-keyword">this</span>.removeAllListeners(<span class="hljs-string">'_stream-response-chunk'</span>);
+
+    <span class="hljs-keyword">this</span>.mqttClient = <span class="hljs-literal">null</span>;
 
     <span class="hljs-keyword">this</span>.brokerProtocol = options.brokerProtocol || <span class="hljs-string">'mqtt'</span>;
     <span class="hljs-keyword">this</span>.brokerHostname = options.brokerHostname || <span class="hljs-string">'localhost'</span>;
@@ -165,7 +172,125 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.connections.filter(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection</span>) </span>{
       <span class="hljs-keyword">return</span> MqttReqRes.isConnected(connection);
     });
-  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqresrequesttoclientid-payload">MqttReqRes.request(toClientId, payload)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.request = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">toClientId, payload</span>) </span>{
+  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="requeststring-toclientid-stringobjectarraybuffer-payload">request(string toClientid, string|object|ArrayBuffer payload)</h3>
+<p>override request </p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype.request = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">toClientId, payload</span>) </span>{
+
+    debug(<span class="hljs-string">'%s request(%s)'</span>, <span class="hljs-keyword">this</span>.clientId, toClientId);
+
+    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
+      type,
+      offset = <span class="hljs-number">0</span>,
+      payloadLength,
+      chunkno = <span class="hljs-number">0</span>,
+      remainingLength,
+      streamId = MqttReqRes.randomString(),
+      eos = <span class="hljs-literal">false</span>;
+    
+    <span class="hljs-keyword">if</span> (payload <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">ArrayBuffer</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>ArrayBuffer</p></div></div><div class="code"><div class="wrapper">      type = <span class="hljs-string">'ArrayBuffer'</span>;
+    }
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (payload <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">Object</span>) {
+      type = <span class="hljs-string">'JSON'</span>;
+    }
+    <span class="hljs-keyword">else</span> {
+      type = <span class="hljs-string">'string'</span>;
+    }
+    
+    debug(<span class="hljs-string">'%s request() type: %s'</span>, <span class="hljs-keyword">this</span>.clientId, type);    
+
+    <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'JSON'</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>payload as a JSON string</p></div></div><div class="code"><div class="wrapper">      payload = <span class="hljs-built_in">JSON</span>.stringify(payload);
+    }
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'string'</span>){</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>payload as a string</p></div></div><div class="code"><div class="wrapper">      payload = <span class="hljs-built_in">String</span>(payload);      
+    }
+
+    remainingLength = payloadLength = (type === <span class="hljs-string">'ArrayBuffer'</span> ? 
+          payload.byteLength : payload.length);
+
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">chunkRequest</span> (<span class="hljs-params"></span>) </span>{
+
+      debug(
+        <span class="hljs-string">'%s chunkRequest() chunkno %d remainingLength %d'</span>, 
+        self.clientId, chunkno, remainingLength
+      );
+
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
+
+        <span class="hljs-keyword">var</span> chunkSize,
+          chunkStr,
+          chunkUint8Array,
+          messageChunkStr;
+
+        chunkSize = remainingLength &gt;= MAX_CHUNK_SIZE ?
+          MAX_CHUNK_SIZE : remainingLength;
+
+        eos = chunkSize === remainingLength;
+
+        <span class="hljs-keyword">if</span> (chunkSize) {
+          <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'ArrayBuffer'</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>chunk as Uint8Array
+new Uint8Array(buffer [, byteOffset [, length]]);</p></div></div><div class="code"><div class="wrapper">            chunkUint8Array = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Uint8Array</span>(payload, offset, chunkSize);
+
+            chunkStr = chunkUint8Array.join(<span class="hljs-string">','</span>);
+          }
+          <span class="hljs-keyword">else</span> {
+            chunkStr = payload.substr(offset, chunkSize);
+          }
+        }
+
+        messageChunkStr = <span class="hljs-built_in">JSON</span>.stringify({
+            streamId: streamId,
+            data: chunkStr,
+            type: type,
+            chunkno: chunkno,
+            eos: eos
+          });
+
+        self.requestChunk(toClientId, messageChunkStr)
+          .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">response</span>) </span>{
+
+            debug(<span class="hljs-string">'%s chunkRequest () responded'</span>, self.clientId);
+            
+            offset += chunkSize;
+
+            remainingLength = payloadLength - offset;
+
+            self.emit(
+              <span class="hljs-string">'_stream-request-chunk'</span>, 
+              {streamId: streamId, response: response, eos: eos}
+            );
+
+            resolve();
+          })
+          .catch(reject); 
+      });
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">waitForChunksDone</span> (<span class="hljs-params"></span>) </span>{
+
+      debug(
+        <span class="hljs-string">'%s waitForChunksDone() streamId %s payloadLength %d'</span>, 
+        self.clientId, streamId, payloadLength
+      );
+
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">onStreamChunk</span> (<span class="hljs-params">ev</span>) </span>{
+          <span class="hljs-keyword">if</span> (ev.streamId === streamId) {
+
+            <span class="hljs-keyword">if</span> (ev.eos) {
+              self.removeListener(<span class="hljs-string">'_stream-request-chunk'</span>, onStreamChunk);
+              resolve(ev.response);
+            }
+            <span class="hljs-keyword">else</span> {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>start next chunk request</p></div></div><div class="code"><div class="wrapper">              ++chunkno;
+              chunkRequest().catch(reject);
+            }
+          }
+        }
+        
+        self.on(<span class="hljs-string">'_stream-request-chunk'</span>, onStreamChunk);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>start first chunk request</p></div></div><div class="code"><div class="wrapper">        chunkRequest().catch(reject);
+      });
+    }
+
+    <span class="hljs-keyword">return</span> waitForChunksDone();</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>return MqttReqRes.prototype.request.apply(this, arguments); </p></div></div><div class="code"><div class="wrapper">  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqresrequestchunktoclientid-messagechunkstr">MqttReqRes.requestChunk(toClientId, messageChunkStr)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.requestChunk = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">toClientId, messageChunkStr</span>) </span>{
 
     debug(<span class="hljs-string">'%s request(%s)'</span>, <span class="hljs-keyword">this</span>.clientId, toClientId);
 
@@ -181,8 +306,6 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
 
       <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
 
-        <span class="hljs-keyword">var</span> payloadStr;
-
         <span class="hljs-keyword">try</span> {
 
           connection = self.getConnection(toClientId);
@@ -190,13 +313,12 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
           <span class="hljs-keyword">if</span> (!connection) {
             reject(<span class="hljs-string">'ECLIENTCONNECTION'</span>);
             <span class="hljs-keyword">return</span>;
-          }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>payload as a string</p></div></div><div class="code"><div class="wrapper">          payloadStr = <span class="hljs-string">'object'</span> === <span class="hljs-keyword">typeof</span> payload ?
-            <span class="hljs-built_in">JSON</span>.stringify(payload) : <span class="hljs-built_in">String</span>(payload);
-          </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>generate a request id</p></div></div><div class="code"><div class="wrapper">          requestId = MqttReqRes.randomString(<span class="hljs-number">30</span>);
+          }
+          </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>generate a chunk request id</p></div></div><div class="code"><div class="wrapper">          requestId = MqttReqRes.randomString(<span class="hljs-number">30</span>);
 
           secret = MqttReqRes.secret(connection);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>build request object</p></div></div><div class="code"><div class="wrapper">          req = {
             requestId: requestId,
-            payload: MqttReqRes.encrypt(payloadStr, secret) 
+            payload: MqttReqRes.encrypt(messageChunkStr, secret) 
           };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>pubish request</p></div></div><div class="code"><div class="wrapper">          self.mqttClient.publish(        
             connection.topicSend, 
             <span class="hljs-built_in">JSON</span>.stringify(req), 
@@ -220,7 +342,7 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
     }
 
 
-    <span class="hljs-keyword">return</span> self.connect(toClientId)
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.connect(toClientId)
       .then(sendRequest)
       .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
         <span class="hljs-keyword">return</span> self.requestPromiseResponse(requestId, secret);
@@ -233,24 +355,69 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
     
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
 
-      <span class="hljs-keyword">var</span> resolved = <span class="hljs-literal">false</span>;
+      <span class="hljs-keyword">var</span> result = {
+        payload: <span class="hljs-literal">null</span>,
+        type: <span class="hljs-literal">null</span>
+      };
+
 
       <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">handleResponse</span> (<span class="hljs-params">responseMessage</span>) </span>{
+
+        <span class="hljs-keyword">var</span> chunk;
+        
         <span class="hljs-keyword">if</span> (responseMessage.respondsTo === requestId) {
-          resolved = <span class="hljs-literal">true</span>;
-          self.removeListener(<span class="hljs-string">'_response'</span>, handleResponse);
-          resolve(MqttReqRes.decrypt(responseMessage.payload, secret));
-          self.emit(<span class="hljs-string">'response'</span>, responseMessage);
+          
+          <span class="hljs-keyword">try</span> {
+
+            chunk = <span class="hljs-built_in">JSON</span>.parse(MqttReqRes.decrypt(responseMessage.payload, secret));
+            <span class="hljs-keyword">if</span> (!result.type) {
+
+              result.type = chunk.type;
+
+              debug(
+                <span class="hljs-string">'%s requestPromiseResponse.handleResponse() chunk type is %s'</span>, 
+                self.clientId, result.type
+              );              
+            }
+
+            <span class="hljs-keyword">if</span> (result.type === <span class="hljs-string">'ArrayBuffer'</span>) {
+             
+              <span class="hljs-keyword">if</span> (result.payload === <span class="hljs-literal">null</span>) {
+                result.payload = [];
+              }
+
+              chunk.data.split(<span class="hljs-string">','</span>).forEach(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">byteStr</span>) </span>{
+                result.payload.push(byteStr);
+              });
+            } 
+            <span class="hljs-keyword">else</span> {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>assume type string or JSON</p></div></div><div class="code"><div class="wrapper">              <span class="hljs-keyword">if</span> (result.payload === <span class="hljs-literal">null</span>) {
+                result.payload = <span class="hljs-string">''</span>;
+              }
+              result.payload += chunk.data;
+            }
+
+            <span class="hljs-keyword">if</span> (chunk.eos) {
+              
+              self.removeListener(<span class="hljs-string">'_response'</span>, handleResponse);
+
+              <span class="hljs-keyword">if</span> (result.type === <span class="hljs-string">'ArrayBuffer'</span>) {
+                result.payload = <span class="hljs-built_in">Uint8Array</span>.from(result.payload).buffer;
+              }
+              <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (result.type === <span class="hljs-string">'Object'</span>) {
+                result.payload = <span class="hljs-built_in">JSON</span>.parse(result.payload);
+              }
+
+              resolve(result);
+              self.emit(<span class="hljs-string">'response'</span>, result);
+            }
+          }
+          <span class="hljs-keyword">catch</span>(e) {
+            reject(e);
+          }
         }
       }
 
       self.on(<span class="hljs-string">'_response'</span>, handleResponse);
-
-      setTimeout(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
-        <span class="hljs-keyword">if</span> (!resolved) {
-          reject(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'EREQUESTTIMEOUT'</span>));
-        }
-      }, <span class="hljs-number">10000</span>);
     });
   };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h4 id="connecttoclientid-sharedsecret">connect([toClientId, sharedSecret])</h4>
 <ul>
@@ -466,7 +633,12 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
     }
 
     <span class="hljs-keyword">this</span>.isWaitingForMqttClientMessages = <span class="hljs-literal">true</span>;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>handle incoming messages</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">this</span>.mqttClient.on(<span class="hljs-string">'message'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">topic, message</span>) </span>{
-      self.handleMqttClientMessage(topic, message);
+      <span class="hljs-keyword">try</span> {
+        self.handleMqttClientMessage(topic, message);
+      }
+      <span class="hljs-keyword">catch</span>(e) {
+        debug(e);
+      }
     });
 
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>;
@@ -700,49 +872,279 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
     };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>call request handler</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">this</span>.fnOnRequest(req, res);
 
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>;
-  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqressendresponseobject-connection-string-requestid-stringobject-payload-string-secret">MqttReqRes.sendResponse(object connection, string requestId, string|object payload, string secret)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.sendResponse = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, requestId, payload, secret</span>) </span>{
+  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="sendresponseobject-connection-string-respondtorequestid-stringobjectarraybuffer-payload-string-secret">sendResponse(object connection, string respondToRequestId, string|object|ArrayBuffer payload, string secret)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.sendResponse = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, respondToRequestId, payload, secret</span>) </span>{
 
-    debug(<span class="hljs-string">'%s sendResponse()'</span>, <span class="hljs-keyword">this</span>.clientId);
+    debug(<span class="hljs-string">'%s sendResponse() respondToRequestId %s'</span>, <span class="hljs-keyword">this</span>.clientId, respondToRequestId);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>ArrayBuffer</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
+      type,
+      offset = <span class="hljs-number">0</span>,
+      payloadLength,
+      chunkno = <span class="hljs-number">0</span>,
+      remainingLength,
+      streamId = MqttReqRes.randomString(),
+      eos = <span class="hljs-literal">false</span>;
+
+
+    <span class="hljs-keyword">if</span> (payload <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">ArrayBuffer</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>ArrayBuffer</p></div></div><div class="code"><div class="wrapper">      type = <span class="hljs-string">'ArrayBuffer'</span>;
+    }
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (payload <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">Object</span>) {
+      type = <span class="hljs-string">'JSON'</span>;
+    }
+    <span class="hljs-keyword">else</span> {
+      type = <span class="hljs-string">'string'</span>;
+    }
+    
+    debug(<span class="hljs-string">'%s sendResponse() type: %s'</span>, <span class="hljs-keyword">this</span>.clientId, type);    
+
+    <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'JSON'</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>payload as a JSON string</p></div></div><div class="code"><div class="wrapper">      payload = <span class="hljs-built_in">JSON</span>.stringify(payload);
+    }
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'string'</span>){</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>payload as a string</p></div></div><div class="code"><div class="wrapper">      payload = <span class="hljs-built_in">String</span>(payload);      
+    }
+
+    remainingLength = payloadLength = (type === <span class="hljs-string">'ArrayBuffer'</span> ? 
+          payload.byteLength : payload.length);
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">chunkResponse</span> (<span class="hljs-params"></span>) </span>{
+
+      debug(
+        <span class="hljs-string">'%s chunkResponse() chunkno %d remainingLength %d'</span>, 
+        self.clientId, chunkno, remainingLength
+      );
+
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
+
+        <span class="hljs-keyword">var</span> chunkSize,
+          chunkStr,
+          chunkUint8Array,
+          message;
+
+        chunkSize = remainingLength &gt;= MAX_CHUNK_SIZE ?
+          MAX_CHUNK_SIZE : remainingLength;
+
+        eos = chunkSize === remainingLength;
+
+        <span class="hljs-keyword">if</span> (chunkSize) {
+          <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'ArrayBuffer'</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>chunk as Uint8Array
+new Uint8Array(buffer [, byteOffset [, length]]);</p></div></div><div class="code"><div class="wrapper">            chunkUint8Array = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Uint8Array</span>(payload, offset, chunkSize);
+
+            chunkStr = chunkUint8Array.join(<span class="hljs-string">','</span>);
+          }
+          <span class="hljs-keyword">else</span> {
+            chunkStr = payload.substr(offset, chunkSize);
+          }
+        }
+
+        message = <span class="hljs-built_in">JSON</span>.stringify({
+          respondsTo: respondToRequestId,
+          streamId: streamId,
+          data: chunkStr,
+          type: type,
+          chunkno: chunkno,
+          eos: eos
+        });
+
+        self.sendResponseChunk(
+          connection,
+          respondToRequestId,
+          message,
+          secret
+        )
+        .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+
+            debug(<span class="hljs-string">'%s chunkResponse () resolved'</span>, self.clientId);
+            
+            offset += chunkSize;
+
+            remainingLength = payloadLength - offset;
+
+            self.emit(
+              <span class="hljs-string">'_stream-response-chunk'</span>, 
+              {streamId: streamId, eos: eos}
+            );
+          }, reject); 
+      });
+    } <span class="hljs-comment">// chunkResponse</span>
+
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">waitForResponseChunksDone</span> (<span class="hljs-params"></span>) </span>{
+
+      debug(
+        <span class="hljs-string">'%s waitForResponseChunksDone() streamId %s payloadLength %d'</span>, 
+        self.clientId, streamId, payloadLength
+      );
+
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">onResponseChunk</span> (<span class="hljs-params">ev</span>) </span>{
+          <span class="hljs-keyword">if</span> (ev.streamId === streamId) {
+
+            <span class="hljs-keyword">if</span> (ev.eos) {
+              self.removeListener(<span class="hljs-string">'_stream-response-chunk'</span>, onResponseChunk);
+              resolve();
+            }
+            <span class="hljs-keyword">else</span> {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>start next chunk request</p></div></div><div class="code"><div class="wrapper">              ++chunkno;
+              chunkResponse().catch(reject);            
+            }
+          }
+        }
+        
+        self.on(<span class="hljs-string">'_stream-response-chunk'</span>, onResponseChunk);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>start first chunk response</p></div></div><div class="code"><div class="wrapper">        chunkResponse().catch(reject);
+      });
+    } <span class="hljs-comment">// waitForResponseChunksDone</span>
+
+    <span class="hljs-keyword">return</span> waitForResponseChunksDone();
+  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqressendresponsechunkobject-connection-string-respondtorequestid-string-payload-string-secret">MqttReqRes.sendResponseChunk(object connection, string respondToRequestId, string payload, string secret)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.sendResponseChunk = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, respondToRequestId, payload, secret</span>) </span>{
+
+    debug(<span class="hljs-string">'%s sendResponseChunk()'</span>, <span class="hljs-keyword">this</span>.clientId);
 
     <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>;
 
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
 
       <span class="hljs-keyword">var</span> resMessage = {
-        respondsTo: requestId
+        respondsTo: respondToRequestId
       };
 
       <span class="hljs-keyword">try</span> {
-        resMessage.payload = MqttReqRes.encrypt(
-            <span class="hljs-string">'object'</span> === <span class="hljs-keyword">typeof</span> payload ?
-              <span class="hljs-built_in">JSON</span>.stringify(payload) : <span class="hljs-built_in">String</span>(payload),
-            secret
-          );
+        resMessage.payload = MqttReqRes.encrypt(payload, secret);
+
+        self.mqttClient.publish(        
+          connection.topicSend, 
+          <span class="hljs-built_in">JSON</span>.stringify(resMessage), 
+          {qos: <span class="hljs-number">0</span>}, 
+          <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">err</span>) </span>{
+            <span class="hljs-keyword">if</span> (err) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>todo: expose error to this client</p></div></div><div class="code"><div class="wrapper">              debug(err);
+              reject(err);
+            }
+            <span class="hljs-keyword">else</span> {
+              resolve();
+            }
+          }
+        );    
       }
       <span class="hljs-keyword">catch</span> (e) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>todo: handle/expose error</p></div></div><div class="code"><div class="wrapper">        debug(e);
       }
-
-      self.mqttClient.publish(        
-        connection.topicSend, 
-        <span class="hljs-built_in">JSON</span>.stringify(resMessage), 
-        {qos: <span class="hljs-number">0</span>}, 
-        <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">err</span>) </span>{
-          <span class="hljs-keyword">if</span> (err) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>todo: expose error to this client</p></div></div><div class="code"><div class="wrapper">            debug(err);
-            reject(err);
-          }
-          <span class="hljs-keyword">else</span> {
-            resolve();
-          }
-        }
-      );    
-
     });
-  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="onrequestfnonrequest">onRequest(fnOnRequest)</h3>
-<p>  set request handler callback function</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype.onRequest = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">fnOnRequest</span>) </span>{
+  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="onrequestfunction-onrequesthandler">onRequest(function onRequestHandler)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.onRequest = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">onRequestCallback</span>) </span>{
 
-    <span class="hljs-keyword">this</span>.fnOnRequest = <span class="hljs-string">'function'</span> === <span class="hljs-keyword">typeof</span> fnOnRequest ?
-      fnOnRequest : <span class="hljs-literal">null</span>;
+    debug(<span class="hljs-string">'%s onRequest()'</span>, <span class="hljs-keyword">this</span>.clientId);
 
+    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
+      currentStreams = {};
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">pWaitForEOS</span> (<span class="hljs-params">streamId</span>) </span>{
+
+      debug(<span class="hljs-string">'%s pWaitForEOS(%s)'</span>, self.clientId, streamId);
+
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
+
+        <span class="hljs-keyword">var</span> result = <span class="hljs-literal">null</span>,
+          type;
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">onStreamOnRequestChunk</span> (<span class="hljs-params">req, res, chunk</span>) </span>{
+
+          <span class="hljs-keyword">try</span> {
+
+          debug(
+            <span class="hljs-string">'%s onStreamOnRequestChunk() chunkno %d data.length %d'</span>, 
+            self.clientId, chunk.chunkno, chunk.data.length
+          );
+
+          <span class="hljs-keyword">if</span> (chunk.streamId === streamId) {
+
+            <span class="hljs-keyword">if</span> (!type) {
+              type = chunk.type;
+
+              debug(
+                <span class="hljs-string">'%s onStreamOnRequestChunk() chunk type is %s'</span>, 
+                self.clientId, type
+              );              
+            }
+
+            <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'ArrayBuffer'</span>) {
+             
+              <span class="hljs-keyword">if</span> (result === <span class="hljs-literal">null</span>) {
+                result = [];
+              }
+
+              chunk.data.split(<span class="hljs-string">','</span>).forEach(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">byteStr</span>) </span>{
+                result.push(byteStr);
+              });
+            } 
+            <span class="hljs-keyword">else</span> {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>assume type string or JSON</p></div></div><div class="code"><div class="wrapper">              <span class="hljs-keyword">if</span> (result === <span class="hljs-literal">null</span>) {
+                result = <span class="hljs-string">''</span>;
+              }
+              result += chunk.data;
+            }
+
+            <span class="hljs-keyword">if</span> (chunk.eos) {
+              </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>end of stream</p></div></div><div class="code"><div class="wrapper">              self.removeListener(<span class="hljs-string">'_stream-on-request-chunk'</span>, onStreamOnRequestChunk);
+              <span class="hljs-keyword">delete</span> currentStreams[streamId];
+
+              <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'ArrayBuffer'</span>) {
+                req.payload = <span class="hljs-built_in">Uint8Array</span>.from(result).buffer;
+              }
+              <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'Object'</span>) {
+                req.payload = <span class="hljs-built_in">JSON</span>.parse(result);
+              }
+              <span class="hljs-keyword">else</span> {
+                req.payload = result;
+              }
+
+              req.type = type;
+
+              resolve([req, res]);
+            }
+            <span class="hljs-keyword">else</span> {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>respond chunk ack</p></div></div><div class="code"><div class="wrapper">              res.send({
+                streamId: streamId,
+                chunkno: chunk.chunkno
+              });
+            }
+          }
+
+          }
+          <span class="hljs-keyword">catch</span> (e) {
+            debug(e);
+            reject(e);     
+          }
+
+        } <span class="hljs-comment">// onStreamOnRequestChunk</span>
+
+        self.on(<span class="hljs-string">'_stream-on-request-chunk'</span>, onStreamOnRequestChunk);
+      });
+    }
+
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">onStreamRequest</span> (<span class="hljs-params">req, res</span>) </span>{
+
+      debug(<span class="hljs-string">'%s onStreamRequest()'</span>, self.clientId);
+
+      <span class="hljs-keyword">var</span> streamMessage;
+
+      <span class="hljs-keyword">try</span> {
+        streamMessage = <span class="hljs-built_in">JSON</span>.parse(req.payload);
+
+        <span class="hljs-keyword">if</span> (!streamMessage ||
+          !streamMessage.streamId) {
+          <span class="hljs-keyword">return</span>;
+        }
+
+        <span class="hljs-keyword">if</span> (!currentStreams[streamMessage.streamId]) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>new stream</p></div></div><div class="code"><div class="wrapper">          currentStreams[streamMessage.streamId] = pWaitForEOS(streamMessage.streamId)
+            .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">result</span>) </span>{
+              onRequestCallback.apply(self, result);
+            });
+        }
+
+        self.emit(<span class="hljs-string">'_stream-on-request-chunk'</span>, req, res, streamMessage);
+
+      }
+      <span class="hljs-keyword">catch</span> (e) {
+        <span class="hljs-keyword">return</span>;
+      }
+    } <span class="hljs-comment">// onStreamRequest</span>
+
+
+    <span class="hljs-keyword">this</span>.fnOnRequest = onStreamRequest; 
+    
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>;
   };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqreshandlemessageresponsearray-topicpath-responsemessage">MqttReqRes.handleMessageResponse(Array topicPath, responseMessage)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.handleMessageResponse = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">topicPath, responseMessage</span>) </span>{
 

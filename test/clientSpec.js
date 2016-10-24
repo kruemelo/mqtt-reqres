@@ -3,6 +3,8 @@
 
 const debug = require('debug')('clientSpec');
 const assert = require('chai').assert;
+const fs = require('fs');
+const os = require('os');
 const Broker = require('mqtt-reqres-broker');
 const Client = require('../lib/mqtt-reqres.js');
 
@@ -204,9 +206,20 @@ describe('MqttReqResClient', () => {
 
     // define request handler
     clientB.onRequest(function (req, res) {
-      debug('ClientB.on request', req.payload);
-      assert.strictEqual(req.payload, 'hello');
-      res.send('foo');
+
+      try {
+
+        debug('ClientB.on request', req.payload);
+        assert.isString(req.topic);
+        assert.isObject(req.connection);
+        assert.strictEqual(req.type, 'string');
+        assert.strictEqual(req.payload, 'hello');
+        res.send('foo');
+
+      }
+      catch(e) {
+        debug(e);
+      }
     });
 
     clientB.connect()
@@ -222,10 +235,214 @@ describe('MqttReqResClient', () => {
         return clientA.request(clientBId, 'hello');
       })
       .then(function (res) {
-        assert.strictEqual(res, 'foo');
+        assert.strictEqual(res.type, 'string');
+        assert.strictEqual(res.payload, 'foo');
         closeClients(clientA, clientB).then(() => done());
       })
       .catch(pcatch);
+  });
+
+
+  it('should request ArrayBuffer and respond string', function (done) {
+
+    this.timeout(7000);
+
+    var filenameSend = 'github-git-cheat-sheet.pdf', // 'github-timeout.png' 'github-git-cheat-sheet.pdf' 'npm.svg', 'npm.png'
+      ui8Send = Uint8Array.from(fs.readFileSync('./test/fixtures/' + filenameSend)),
+      arrayBufferSend = ui8Send.buffer;
+
+    assert(arrayBufferSend instanceof ArrayBuffer);
+
+    clientA = newClient(clientAId);
+
+    clientA.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    clientB = newClient(clientBId);
+
+    clientB.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    // define request handler
+    clientB.onRequest(function (req, res) {
+
+      try {
+
+        debug('ClientB.on request, payload byteLength %d', req.payload.byteLength);
+
+        assert.strictEqual(req.type, 'ArrayBuffer');
+        assert.strictEqual(req.payload.byteLength, arrayBufferSend.byteLength);
+
+        assert.deepEqual(
+          new Uint8Array(req.payload, 0, req.payload.byteLength), 
+          ui8Send
+        );
+        
+        // example: writing buffer to fs
+        // fs.writeFileSync(
+        //   os.tmpdir() + '/' + filenameSend,
+        //   new Buffer(req.payload),
+        //   {encoding: null}
+        // );
+
+        // example: compare ArrayBuffer payload and file content
+        // assert.deepEqual(
+        //   new Uint8Array(req.payload, 0, req.payload.byteLength), 
+        //   Uint8Array.from(fs.readFileSync('./test/fixtures/' + filenameSend))
+        // );
+
+        res.send('bar');
+      }
+      catch (e) {
+        console.error(e);
+        done(e);
+      }
+    });
+
+    clientB.connect()
+      .then(function() {
+        return clientA.request(clientBId, ui8Send.buffer);
+      })
+      .then(function (res) {
+        assert.strictEqual(res.type, 'string');
+        assert.strictEqual(res.payload, 'bar');
+        closeClients(clientA, clientB).then(() => done());
+      })
+      .catch(pcatch);
+  });
+
+
+  it('should request string and respond ArrayBuffer', function (done) {
+
+    this.timeout(5000);
+
+    var filenameRespond = 'npm.svg', // 'github-timeout.png' 'github-git-cheat-sheet.pdf' 'npm.svg', 'npm.png'
+      ui8Respond = Uint8Array.from(fs.readFileSync('./test/fixtures/' + filenameRespond)),
+      arrayBufferRespond = ui8Respond.buffer;
+
+    clientA = newClient(clientAId);
+
+    clientA.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    clientB = newClient(clientBId);
+
+    clientB.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    // define request handler
+    clientB.onRequest(function (req, res) {
+      try {
+        debug('ClientB.on request, payload length %d', req.payload.length);
+
+        assert.strictEqual(req.type, 'string');
+        assert.strictEqual(req.payload, 'foo');
+
+        // now respond with file
+        res.send(arrayBufferRespond);
+      }
+      catch(e) {
+        done(e);
+      }
+    });
+
+    clientB.connect()
+      .then(function() {
+        return clientA.request(clientBId, 'foo');
+      })
+      .then(function (res) {
+
+        debug('clientA got response from cientB, res byteLength %d', res.payload.byteLength);
+
+        assert.strictEqual(res.type, 'ArrayBuffer');
+        assert.strictEqual(res.payload.byteLength, arrayBufferRespond.byteLength);
+
+        assert.deepEqual(
+          new Uint8Array(res.payload, 0, res.payload.byteLength), 
+          ui8Respond
+        );
+
+        closeClients(clientA, clientB).then(() => done());
+      })
+      .catch(pcatch);
+  });
+
+
+  xit('should request with meta data', function (done) {
+
+    clientA = newClient(clientAId);
+
+    clientA.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    clientB = newClient(clientBId);
+
+    clientB.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    // define request handler
+    clientB.onRequest(function (req, res) {
+      try {
+        debug('ClientB.on request', req.payload);
+        assert.strictEqual(req.meta, {foo: 'bar'});
+        res.send('');
+        closeClients(clientA, clientB).then(() => done());
+      }
+      catch(e) {
+        done(e);
+      }
+    });
+
+
+    clientB.connect()     
+      .then(function() {
+
+        // request with meta data
+        return clientA.request(clientBId, 'hello', {foo: 'bar'});
+      })
+      .catch(pcatch);    
+  });
+
+
+  xit('should response with meta data', function (done) {
+
+    clientA = newClient(clientAId);
+
+    clientA.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    clientB = newClient(clientBId);
+
+    clientB.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    // define request handler
+    clientB.onRequest(function (req, res) {
+
+      // respond with meta data
+      res.send('', {foo: 'bar'});
+    });
+
+
+    clientB.connect()     
+      .then(function () {
+        return clientA.request(clientBId, 'hello');
+      })
+      .then(function (res) {
+        
+        assert.strictEqual(res.meta, {foo: 'bar'});
+        
+        closeClients(clientA, clientB).then(() => done());
+      })
+      .catch(pcatch);    
   });
 
 
@@ -266,5 +483,4 @@ describe('MqttReqResClient', () => {
       })
       .catch(pcatch);
   });
-
 });

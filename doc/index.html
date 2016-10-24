@@ -1,29 +1,7 @@
 <!DOCTYPE html><html lang="en"><head><title>index</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content=""><meta name="groc-document-path" content="index"><meta name="groc-project-path" content="README.md"><link rel="stylesheet" type="text/css" media="all" href="assets/style.css"><script type="text/javascript" src="assets/behavior.js"></script><body><div id="meta"><div class="file-path">README.md</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="mqtt-reqres">mqtt-reqres</h1>
 <p>mqtt request/response client based on <a href="https://github.com/mqttjs/MQTT.js">mqttjs</a></p>
-<h2 id="test">test</h2>
-<p>runs mocha specs in /test</p>
-<pre><code>$ npm test
-// or
-$ npm run test:debug</code></pre>
-<p>you may also open <code>test/index.html</code> in browser to play around with a client live frontend - this requires to have a websocket mqtt broker running:</p>
-<pre><code>$ npm run broker
-
-// start broker with options
-$ npm run broker -- -h 127.0.0.1 -p 9999</code></pre>
-<h2 id="other-tasks">other tasks</h2>
-<pre><code>// build all
-$ npm run build
-
-// create build/mqtt-reqres-browser.js
-$ npm run browserify
-
-// create annotated source documentation in doc/
-$ npm run build:docs
-
-// minify browser version (http://coderaiser.github.io/minify/)
-$ npm run minify:browser</code></pre>
-<p>see all npm tasks defined in <a href="./package.html">package.json</a>.</p>
-<h1 id="client-api">client API</h1>
+<h1 id="api">API</h1>
+<p>Stability: Experimental</p>
 <h2 id="include-client-into-web-page">include client into web page</h2>
 <pre><code>&lt;script src=&quot;../build/mqtt-reqres-browser.js&quot;&gt;&lt;/script&gt;
 
@@ -61,12 +39,16 @@ $ npm run minify:browser</code></pre>
 <h3 id="requesttoclientid-payload">request(toClientId[, payload])</h3>
 <p>send a request to an other client.</p>
 <p><strong>toClientId</strong> string, required. the receiver&#39;s client id</p>
-<p><strong>payload</strong> string|object, optional. the message string or object to be sent.</p>
-<p><strong>returns</strong> Promise which resolves to string <code>response</code></p>
+<p><strong>payload</strong> string|object|ArrayBuffer, optional. the message string or object to be sent.</p>
+<p><strong>returns</strong> Promise which resolves to object <code>response</code></p>
 <p>Example:</p>
 <pre><code>client.request(&#39;client-b&#39;, &#39;hello!&#39;)
   .then(function (response) {
-    // called when received response (string)
+
+    /* called when received response 
+    response.type -&gt; &#39;string&#39;, &#39;ArrayBuffer&#39;, &#39;JSON&#39;
+    response.payload -&gt; typeof string, ArrayBuffer or Object
+    */
   })
   .catch(function (reason) {
     // request failed
@@ -76,20 +58,34 @@ $ npm run minify:browser</code></pre>
 <p>defines a connection-specific request handler callback function. The handler function is called internally on each request received from connected client.</p>
 <p><strong>callback</strong> function required; callback takes these arguments:</p>
 <ul>
-<li>object <strong>req</strong> the request object with properties object <code>connection</code>, string <code>topic</code> and string <code>string payload</code></li>
+<li>object <strong>req</strong> the request object with properties object <code>connection</code>, string <code>topic</code>, string <code>type</code> and string|object|ArrayBuffer <code>payload</code></li>
 <li>object <strong>res</strong> the response object with function <code>send()</code></li>
 </ul>
 <p>use <code>res.send(message)</code> to respond to the request with string|object <code>message</code>.</p>
 <p>Examples:</p>
-<pre><code>// respond with &quot;foo&quot;
-clientB.onRequest(function (req, res) {
+<p>respond with string &quot;foo&quot;:</p>
+<pre><code>clientB.onRequest(function (req, res) {
+
+  /* called when received request 
+  req.type -&gt; &#39;string&#39;, &#39;ArrayBuffer&#39;, &#39;JSON&#39;
+  req.payload -&gt; typeof string, ArrayBuffer or Object
+  req.connection -&gt; connection object
+  req.topic -&gt; string mqtt topic
+  */
+
   res.send(&#39;foo&#39;);
-});
+});</code></pre>
+<p>respond with object</p>
+<pre><code>clientB.onRequest(function (req, res) {
 
+  var o = {foo: &#39;bar&#39;};
+  res.send(o);
+});</code></pre>
+<p>respond with file content</p>
+<pre><code>clientB.onRequest(function (req, res) {
 
-// respond with a local file
-clientB.onRequest(function (req, res) {
-  res.send(fs.readFileSync(&#39;github-git-cheat-sheet.pdf&#39;));
+  var arrayBufferRespond = Uint8Array.from(fs.readFileSync(&#39;filename&#39;)).buffer;
+  res.send(arrayBufferRespond);
 });</code></pre>
 <h3 id="sharedsecretcallback">sharedSecret(callback)</h3>
 <p>defines a connection-specific callback function to retrieve the shared secret required to connect. The callback function will be called internally on incoming as well as outgoing connection requests.</p>
@@ -163,6 +159,29 @@ clientA.disconnect(&#39;client-b&#39;)
 <pre><code>client.on(&#39;client-connect&#39;, function (clientId) {
   log(&#39;on.client-connect &#39; + clientId);
 });</code></pre>
+<h2 id="test">test</h2>
+<p>runs mocha specs in /test</p>
+<pre><code>$ npm test
+// or
+$ npm run test:debug</code></pre>
+<p>you may also open <code>test/index.html</code> in browser to play around with a client live frontend - this requires to have a websocket mqtt broker running:</p>
+<pre><code>$ npm run broker
+
+// start broker with options
+$ npm run broker -- -h 127.0.0.1 -p 9999</code></pre>
+<h2 id="other-tasks">other tasks</h2>
+<pre><code>// build all
+$ npm run build
+
+// create build/mqtt-reqres-browser.js
+$ npm run browserify
+
+// create annotated source documentation in doc/
+$ npm run build:docs
+
+// minify browser version (http://coderaiser.github.io/minify/)
+$ npm run minify:browser</code></pre>
+<p>see all npm tasks defined in <a href="./package.html">package.json</a>.</p>
 <h2 id="build-docs">build docs</h2>
 <p>create annotated source documentation in <code>doc/</code> folder, uses <a href="https://github.com/nevir/groc">groc</a></p>
 <pre><code>$ npm run build:docs</code></pre></div></div></div></div></body></html>

@@ -124,7 +124,7 @@
 
 
       client.onRequest(function (req, res) {
-        log('onRequest from ' + req.connection.clientId + ', payload: ' + req.payload);
+        log('onRequest from ' + req.connection.clientId + ', payload: ' + req.type + ' ' + req.payload);
         res.send('you said: "' + req.payload + '"');
       });
     }
@@ -221,7 +221,7 @@
 
         client.request(toClientId, msgEl.value)
           .then(function (res) {
-            log(toClientId + ' responded: ' + res);
+            log(toClientId + ' responded: ' + res.type + ' ' + res.payload);
             msgEl.value = '';
           })
           .catch(function (err) {

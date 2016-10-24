@@ -3,43 +3,9 @@
 mqtt request/response client based on [mqttjs](https://github.com/mqttjs/MQTT.js)
 
 
-## test
+# API
 
-runs mocha specs in /test
-
-```
-$ npm test
-// or
-$ npm run test:debug
-```
-you may also open `test/index.html` in browser to play around with a client live frontend - this requires to have a websocket mqtt broker running:
-
-```
-$ npm run broker
-
-// start broker with options
-$ npm run broker -- -h 127.0.0.1 -p 9999
-```
-
-## other tasks
-
-```
-// build all
-$ npm run build
-
-// create build/mqtt-reqres-browser.js
-$ npm run browserify
-
-// create annotated source documentation in doc/
-$ npm run build:docs
-
-// minify browser version (http://coderaiser.github.io/minify/)
-$ npm run minify:browser
-```
-
-see all npm tasks defined in [package.json](./package.html).
-
-# client API
+Stability: Experimental
 
 ## include client into web page
 
@@ -97,16 +63,21 @@ send a request to an other client.
 
 **toClientId** string, required. the receiver's client id
 
-**payload** string|object, optional. the message string or object to be sent.
+**payload** string|object|ArrayBuffer, optional. the message string or object to be sent.
 
-**returns** Promise which resolves to string `response`
+**returns** Promise which resolves to object `response`
+
 
 Example:
 
 ```
 client.request('client-b', 'hello!')
   .then(function (response) {
-    // called when received response (string)
+
+    /* called when received response 
+    response.type -> 'string', 'ArrayBuffer', 'JSON'
+    response.payload -> typeof string, ArrayBuffer or Object
+    */
   })
   .catch(function (reason) {
     // request failed
@@ -121,19 +92,47 @@ defines a connection-specific request handler callback function. The handler fun
 
 **callback** function required; callback takes these arguments:
 
-- object **req** the request object with properties object `connection`, string `topic` and string `string payload`
+- object **req** the request object with properties object `connection`, string `topic`, string `type` and string|object|ArrayBuffer `payload`
 - object **res** the response object with function `send()`
 
 use `res.send(message)` to respond to the request with string|object `message`.
 
 Examples:
 
+respond with string "foo":
+
 ```
-// respond with "foo"
 clientB.onRequest(function (req, res) {
+
+  /* called when received request 
+  req.type -> 'string', 'ArrayBuffer', 'JSON'
+  req.payload -> typeof string, ArrayBuffer or Object
+  req.connection -> connection object
+  req.topic -> string mqtt topic
+  */
+
   res.send('foo');
 });
 
+```
+
+respond with object
+```
+clientB.onRequest(function (req, res) {
+
+  var o = {foo: 'bar'};
+  res.send(o);
+});
+```
+
+respond with file content
+
+```
+clientB.onRequest(function (req, res) {
+
+  var arrayBufferRespond = Uint8Array.from(fs.readFileSync('filename')).buffer;
+  res.send(arrayBufferRespond);
+});
 ```
 
 
@@ -245,6 +244,43 @@ client.on('client-connect', function (clientId) {
   log('on.client-connect ' + clientId);
 });
 ```
+
+
+## test
+
+runs mocha specs in /test
+
+```
+$ npm test
+// or
+$ npm run test:debug
+```
+you may also open `test/index.html` in browser to play around with a client live frontend - this requires to have a websocket mqtt broker running:
+
+```
+$ npm run broker
+
+// start broker with options
+$ npm run broker -- -h 127.0.0.1 -p 9999
+```
+
+## other tasks
+
+```
+// build all
+$ npm run build
+
+// create build/mqtt-reqres-browser.js
+$ npm run browserify
+
+// create annotated source documentation in doc/
+$ npm run build:docs
+
+// minify browser version (http://coderaiser.github.io/minify/)
+$ npm run minify:browser
+```
+
+see all npm tasks defined in [package.json](./package.html).
 
 ## build docs
 
