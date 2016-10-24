@@ -1,0 +1,10 @@
+{
+  "glob": [
+    "package.json",
+    "lib/mqtt-reqres.js",   
+    "lib/crypto-js/cryptojs-module.js",    
+    "test/**/*.js",
+  	"README.md"
+  ],
+  "except": []
+}

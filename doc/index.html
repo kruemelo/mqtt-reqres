@@ -1,0 +1,168 @@
+<!DOCTYPE html><html lang="en"><head><title>index</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content=""><meta name="groc-document-path" content="index"><meta name="groc-project-path" content="README.md"><link rel="stylesheet" type="text/css" media="all" href="assets/style.css"><script type="text/javascript" src="assets/behavior.js"></script><body><div id="meta"><div class="file-path">README.md</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="mqtt-reqres">mqtt-reqres</h1>
+<p>mqtt request/response client based on <a href="https://github.com/mqttjs/MQTT.js">mqttjs</a></p>
+<h2 id="test">test</h2>
+<p>runs mocha specs in /test</p>
+<pre><code>$ npm test
+// or
+$ npm run test:debug</code></pre>
+<p>you may also open <code>test/index.html</code> in browser to play around with a client live frontend - this requires to have a websocket mqtt broker running:</p>
+<pre><code>$ npm run broker
+
+// start broker with options
+$ npm run broker -- -h 127.0.0.1 -p 9999</code></pre>
+<h2 id="other-tasks">other tasks</h2>
+<pre><code>// build all
+$ npm run build
+
+// create build/mqtt-reqres-browser.js
+$ npm run browserify
+
+// create annotated source documentation in doc/
+$ npm run build:docs
+
+// minify browser version (http://coderaiser.github.io/minify/)
+$ npm run minify:browser</code></pre>
+<p>see all npm tasks defined in <a href="./package.html">package.json</a>.</p>
+<h1 id="client-api">client API</h1>
+<h2 id="include-client-into-web-page">include client into web page</h2>
+<pre><code>&lt;script src=&quot;../build/mqtt-reqres-browser.js&quot;&gt;&lt;/script&gt;
+
+// or minified
+
+&lt;script src=&quot;../build/mqtt-reqres-browser.min.js&quot;&gt;&lt;/script&gt;
+
+..
+
+&lt;script type=&quot;text/javascript&quot;&gt;
+
+  client = new MqttReqRes();
+  ..  
+&lt;/script&gt;</code></pre>
+<h2 id="use-the-client-as-a-module">use the client as a module</h2>
+<pre><code>var MqttReqRes = require(&#39;mqtt-reqres&#39;);</code></pre>
+<h2 id="methods">Methods</h2>
+<h3 id="mqttreqresoptions">MqttReqRes([options])</h3>
+<p>constructor</p>
+<p><strong>options</strong>:</p>
+<ul>
+<li>brokerProtocol string optional default &#39;mqtt&#39; (&#39;ws&#39;)</li>
+<li>brokerHostname string optional default &#39;localhost&#39;</li>
+<li>brokerPort number optional default 1883</li>
+<li>clientId string optional default random string</li>
+</ul>
+<p><strong>returns</strong> instance of MqttReqRes </p>
+<p>Example:</p>
+<pre><code>var client = new MqttReqRes({
+  brokerProtocol: &#39;mqtt&#39;,
+  brokerHostname: &#39;127.0.0.1&#39;,
+  brokerPort: 9999,
+  clientId: &#39;client-a&#39;
+})</code></pre>
+<h3 id="requesttoclientid-payload">request(toClientId[, payload])</h3>
+<p>send a request to an other client.</p>
+<p><strong>toClientId</strong> string, required. the receiver&#39;s client id</p>
+<p><strong>payload</strong> string|object, optional. the message string or object to be sent.</p>
+<p><strong>returns</strong> Promise which resolves to string <code>response</code></p>
+<p>Example:</p>
+<pre><code>client.request(&#39;client-b&#39;, &#39;hello!&#39;)
+  .then(function (response) {
+    // called when received response (string)
+  })
+  .catch(function (reason) {
+    // request failed
+    console.error(reason);
+  });</code></pre>
+<h3 id="onrequestcallback">onRequest(callback)</h3>
+<p>defines a connection-specific request handler callback function. The handler function is called internally on each request received from connected client.</p>
+<p><strong>callback</strong> function required; callback takes these arguments:</p>
+<ul>
+<li>object <strong>req</strong> the request object with properties object <code>connection</code>, string <code>topic</code> and string <code>string payload</code></li>
+<li>object <strong>res</strong> the response object with function <code>send()</code></li>
+</ul>
+<p>use <code>res.send(message)</code> to respond to the request with string|object <code>message</code>.</p>
+<p>Examples:</p>
+<pre><code>// respond with &quot;foo&quot;
+clientB.onRequest(function (req, res) {
+  res.send(&#39;foo&#39;);
+});
+
+
+// respond with a local file
+clientB.onRequest(function (req, res) {
+  res.send(fs.readFileSync(&#39;github-git-cheat-sheet.pdf&#39;));
+});</code></pre>
+<h3 id="sharedsecretcallback">sharedSecret(callback)</h3>
+<p>defines a connection-specific callback function to retrieve the shared secret required to connect. The callback function will be called internally on incoming as well as outgoing connection requests.</p>
+<p><strong>callback</strong> function required; first argument <code>clientId</code> is the connecting client id or the id of client to connect, the second <code>cb</code> a callback that takes the shared secret or falsy when connection should be refused. </p>
+<pre><code>
+function onSharedSecret (clientId, cb) {
+  if (clientId === &#39;client-b&#39;) {
+    // continue connecting with client b using shared secret
+    cb(&#39;shared-secret-a-b&#39;);
+  }
+  else {
+    // refuse connect
+    cb();
+  }
+}
+
+clientA.sharedSecret(onSharedSecret);</code></pre>
+<h3 id="connecttoclientid-sharedsecret">connect([toClientId[, sharedSecret]])</h3>
+<p>connect to broker or client with <code>toClientId</code> set.</p>
+<p><strong>toClientId</strong> string, optional. if set, connects to a client with the specified id. if omitted only connects to the broker.</p>
+<p><strong>sharedSecret</strong> string optional. if set it is used as the shared secret when connecting the client</p>
+<p>Example:</p>
+<pre><code>
+clientB.sharedSecret(function (clientId, callback) {
+  if (clientId === &#39;client-a&#39;) {
+    callback(&#39;shared-secret-a-b&#39;)
+  }
+  else {
+    callback(null);
+  }
+});
+
+// connect client-b to broker
+clientB.connect()
+  .then(..);
+
+..
+
+// connect client-a to client-b
+clientA.connect(&#39;client-b&#39;, &#39;shared-secret-a-b&#39;)
+  .then(function () {
+    // called when client-b is connected
+  })
+  .catch(function (reason) {
+    // connect to client-b failed
+    console.error(reason);
+  });</code></pre>
+<h3 id="disconnectfromclientid">disconnect([fromClientId])</h3>
+<p>disconnect from broker or client with <code>toClientId</code> set.</p>
+<p><strong>fromClientId</strong> string, optional. if set, disconnects from a client with the specified id. if omitted, completely disconnects also also from the broker.</p>
+<p>Example:</p>
+<pre><code>// completely disconnect client-b
+clientB.disconnect()
+  .then(..);
+
+..
+
+// disconnect from client-b only
+clientA.disconnect(&#39;client-b&#39;)
+  .then(..)</code></pre>
+<h2 id="events">Events</h2>
+<h3 id="broker-connect">broker-connect</h3>
+<p>fired when client connects to broker</p>
+<h3 id="client-connect">client-connect</h3>
+<p>fired when a client connects</p>
+<p>Arguments:</p>
+<ul>
+<li>string <strong>clientId</strong> the client id of the connected client</li>
+</ul>
+<p>Example:</p>
+<pre><code>client.on(&#39;client-connect&#39;, function (clientId) {
+  log(&#39;on.client-connect &#39; + clientId);
+});</code></pre>
+<h2 id="build-docs">build docs</h2>
+<p>create annotated source documentation in <code>doc/</code> folder, uses <a href="https://github.com/nevir/groc">groc</a></p>
+<pre><code>$ npm run build:docs</code></pre></div></div></div></div></body></html>

@@ -1,0 +1,235 @@
+<html>
+<head>
+  <meta charset="utf-8" /> 
+  <title>mqtt-reqres client test</title>
+</head>
+<body>
+
+  <style type="text/css">
+  
+    label {
+      display: block;
+    }
+
+    #log {
+      width:98%; 
+      min-height:10em;
+    }
+  </style>
+ 
+  <h2>broker</h2>
+  
+  <label for="brokerHostname">hostname: </label>
+  <input type="text" value="localhost" id="brokerHostname"/>
+
+  <label for="brokerPort">port: </label>
+  <input type="text" value="1883" id="brokerPort"/>
+
+  <label for="myClientId">client id: </label>
+  <input type="text" value="" id="myClientId"/>
+
+  <br/><br/>
+
+  <button id="btnConnectBroker">connect</button>
+  <button id="btnDisconnectBroker">disconnect</button>
+
+  <hr/>
+  <h2>to client</h2>
+
+  <label for="toClientId">to client id: </label>
+  <input type="text" value="" id="toClientId"/>
+  
+  <button id="btnConnectClient">connect</button>
+  <button id="btnDisconnectClient">disconnect</button>
+
+  <br/><br/>
+
+  <label for="msgText">message: </label>
+  <textarea id="msgText"></textarea>
+
+  <button id="btnRequest">send</button>
+
+  <hr/>
+
+  <h2>connected clients</h2>
+
+  <ol id="connectedClients"></ol>
+
+  <hr/>
+
+  <h2>message log</h2>
+
+  <textarea id="log" readonly="readonly"></textarea>
+  
+  <script src="../build/mqtt-reqres-browser.js"></script>
+
+  <script>
+
+    function log (msgText) {
+      var logEl = document.querySelector('#log');
+      logEl.value = '[' + (new Date()).toUTCString() + '] ' + msgText + '\n' + logEl.value.substr(0, 200000);
+    }
+
+    function clearLog () {
+      document.querySelector('#log').value = '';
+    }
+
+    var client,
+      sharedSecret = 'public-shared-secret';
+
+
+    function updateConnectedClientsList () {
+      
+      var listEl = document.querySelector('#connectedClients');
+      
+      listEl.innerHTML = '';
+      
+      if (!client) {
+        return;
+      }
+
+      client.getConnected().forEach(function (conn) {
+        var liEl = document.createElement('li');
+        liEl.innerHTML = conn.clientId;
+        listEl.appendChild(liEl);
+      });
+
+    }
+
+    function newClient () {
+
+      client = new MqttReqRes({
+        brokerProtocol: 'mqtt',
+        brokerHostname: document.querySelector('#brokerHostname').value,
+        brokerPort: Number.parseInt(document.querySelector('#brokerPort').value, 10),
+        clientId: document.querySelector('#myClientId').value || undefined
+      });
+
+      client.sharedSecret(function (clientId, callback) {
+        callback(sharedSecret);
+      });
+
+
+      client.on('broker-connect', function () {
+        log('on.broker-connect with client id ' + this.clientId);
+        document.querySelector('#myClientId').value = this.clientId;
+        updateConnectedClientsList();
+      });
+
+
+      client.on('client-connect', function (clientId) {
+        log('on.client-connect ' + clientId);
+        updateConnectedClientsList();
+      });
+
+
+      client.onRequest(function (req, res) {
+        log('onRequest from ' + req.connection.clientId + ', payload: ' + req.payload);
+        res.send('you said: "' + req.payload + '"');
+      });
+    }
+
+    function connect (toClientId) {
+
+      if (!client || 
+        client.clientId !== document.querySelector('#myClientId').value) {
+        newClient();
+      }
+
+      client.connect(toClientId)
+        .then(function () {
+          log('connected to ' + (toClientId || 'broker'));
+          updateConnectedClientsList();
+        })
+        .catch(function (err) {
+          log(
+            'failed to connect "' + 
+            (toClientId || 'broker ' + document.querySelector('#brokerHostname').value) +
+            '": '  + err.message
+           );
+           updateConnectedClientsList();
+        });
+    }
+
+    function closeClient () {
+      if (client) {
+        client.close();
+        client = null;
+        clearLog();
+      }
+      updateConnectedClientsList();
+    }
+
+
+    document.querySelector('#btnConnectBroker')
+      .addEventListener('click', function () {
+        connect();
+      });
+
+    document.querySelector('#btnDisconnectBroker')
+      .addEventListener('click', function () {
+        closeClient();
+      });
+
+    document.querySelector('#btnConnectClient')
+      .addEventListener('click', function () {
+
+        var toClientIdEl = document.querySelector('#toClientId'),
+          toClientId = toClientIdEl.value;
+
+        connect(toClientId);
+      });
+
+
+    document.querySelector('#btnDisconnectClient')
+      .addEventListener('click', function () {
+
+        var toClientIdEl = document.querySelector('#toClientId'),
+          toClientId = toClientIdEl.value;
+        
+        if (!client) {
+          log('no broker connected. connect client to broker first!');
+          return;
+        }
+
+        client.disconnect(toClientId)
+          .then(function () {
+            updateConnectedClientsList();
+            if (!toClientId) {
+              closeClient();
+            }
+            log('disconnected from ' + (toClientId || 'broker'));
+          })
+          .catch(function (err) {
+            log('failed to disconnect "' + toClientId + '": '  + err.message);
+            updateConnectedClientsList();
+          });
+      });
+
+
+    document.querySelector('#btnRequest')
+      .addEventListener('click', function () {
+
+        if (!client) {
+          log('no broker connected. connect client to broker first!');
+          return;
+        }
+
+        var toClientIdEl = document.querySelector('#toClientId'),
+          toClientId = toClientIdEl.value,
+          msgEl = document.querySelector('#msgText');
+
+        client.request(toClientId, msgEl.value)
+          .then(function (res) {
+            log(toClientId + ' responded: ' + res);
+            msgEl.value = '';
+          })
+          .catch(function (err) {
+            log('failed to send request to "' + toClientId + '": '  + err);
+          });
+
+      });
+
+    </script> 
+</body>
+</html>

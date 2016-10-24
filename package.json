@@ -1,0 +1,30 @@
+{
+  "name": "mqtt-reqres",
+  "version": "0.0.1",
+  "description": "mqtt request/response client",
+  "main": "./lib/mqtt-reqres.js",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha test/clientSpec",
+    "test:debug": "DEBUG=clientSpec,mqtt-reqres,mqtt-reqres-broker ./node_modules/.bin/mocha",
+    "broker": "./node_modules/.bin/mqtt-reqres-broker start",
+    "build": "npm run jshint && npm test && npm run browserify && npm run minify:browser && npm run build:docs",
+    "jshint": "./node_modules/.bin/jshint lib/mqtt-reqres.js",
+    "browserify": "browserify ./lib/mqtt-reqres.js -s MqttReqRes > ./build/mqtt-reqres-browser.js",
+    "minify:browser": "./node_modules/.bin/minify ./build/mqtt-reqres-browser.js > ./build/mqtt-reqres-browser.min.js",
+    "build:docs": "./node_modules/.bin/groc"
+  },
+  "author": "kruemelo",
+  "license": "MIT",
+  "dependencies": {
+    "mqtt": "^2.0.1"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "debug": "^2.2.0",
+    "groc": "^0.8.0",
+    "jshint": "^2.9.3",
+    "mocha": "^3.1.2",
+    "minify": "^2.0.12",
+    "mqtt-reqres-broker": "^0.0.2"
+  }
+}
