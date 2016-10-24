@@ -134,12 +134,6 @@ clientB.onRequest(function (req, res) {
   res.send('foo');
 });
 
-
-// respond with a local file
-clientB.onRequest(function (req, res) {
-  res.send(fs.readFileSync('github-git-cheat-sheet.pdf'));
-});
-
 ```
 
 
