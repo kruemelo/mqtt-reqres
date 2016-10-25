@@ -7,29 +7,6 @@ mqtt request/response client based on [mqttjs](https://github.com/mqttjs/MQTT.js
 
 Stability: Experimental
 
-## include client into web page
-
-```
-<script src="../build/mqtt-reqres-browser.js"></script>
-
-// or minified
-
-<script src="../build/mqtt-reqres-browser.min.js"></script>
-
-..
-
-<script type="text/javascript">
-  
-  client = new MqttReqRes();
-  ..  
-</script>
-```
-
-## use the client as a module
-
-```
-var MqttReqRes = require('mqtt-reqres');
-```
 
 ## Methods
 
@@ -88,7 +65,7 @@ client.request('client-b', 'hello!')
 
 ### onRequest(callback)
 
-defines a connection-specific request handler callback function. The handler function is called internally on each request received from connected client.
+defines a request handler callback function. The handler function is called internally on each request received from connected client.
 
 **callback** function required; callback takes these arguments:
 
@@ -243,6 +220,30 @@ Example:
 client.on('client-connect', function (clientId) {
   log('on.client-connect ' + clientId);
 });
+```
+
+## include client into web page
+
+```
+<script src="../build/mqtt-reqres-browser.js"></script>
+
+// or minified
+
+<script src="../build/mqtt-reqres-browser.min.js"></script>
+
+..
+
+<script type="text/javascript">
+  
+  client = new MqttReqRes();
+  ..  
+</script>
+```
+
+## use the client as a module
+
+```
+var MqttReqRes = require('mqtt-reqres');
 ```
 
 

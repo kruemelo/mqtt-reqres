@@ -110,7 +110,6 @@ describe('MqttReqResClient', () => {
     // or:
     // clientA.connect()
     //   .then(..);
-
   });
 
 
@@ -210,12 +209,13 @@ describe('MqttReqResClient', () => {
       try {
 
         debug('ClientB.on request', req.payload);
+
         assert.isString(req.topic);
         assert.isObject(req.connection);
         assert.strictEqual(req.type, 'string');
         assert.strictEqual(req.payload, 'hello');
-        res.send('foo');
 
+        res.send('foo');
       }
       catch(e) {
         debug(e);
@@ -235,8 +235,11 @@ describe('MqttReqResClient', () => {
         return clientA.request(clientBId, 'hello');
       })
       .then(function (res) {
+        
+        // check response received by client A 
         assert.strictEqual(res.type, 'string');
         assert.strictEqual(res.payload, 'foo');
+
         closeClients(clientA, clientB).then(() => done());
       })
       .catch(pcatch);
@@ -372,7 +375,7 @@ describe('MqttReqResClient', () => {
   });
 
 
-  xit('should request with meta data', function (done) {
+  it('should request with meta data', function (done) {
 
     clientA = newClient(clientAId);
 
@@ -390,7 +393,7 @@ describe('MqttReqResClient', () => {
     clientB.onRequest(function (req, res) {
       try {
         debug('ClientB.on request', req.payload);
-        assert.strictEqual(req.meta, {foo: 'bar'});
+        assert.deepEqual(req.meta, {foo: 'bar'});
         res.send('');
         closeClients(clientA, clientB).then(() => done());
       }
@@ -410,7 +413,7 @@ describe('MqttReqResClient', () => {
   });
 
 
-  xit('should response with meta data', function (done) {
+  it('should respond with meta data', function (done) {
 
     clientA = newClient(clientAId);
 
@@ -438,7 +441,8 @@ describe('MqttReqResClient', () => {
       })
       .then(function (res) {
         
-        assert.strictEqual(res.meta, {foo: 'bar'});
+        assert.deepEqual(res.meta, {foo: 'bar'});
+        assert.strictEqual(res.payload, '');
         
         closeClients(clientA, clientB).then(() => done());
       })

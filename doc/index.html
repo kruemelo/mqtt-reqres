@@ -2,22 +2,6 @@
 <p>mqtt request/response client based on <a href="https://github.com/mqttjs/MQTT.js">mqttjs</a></p>
 <h1 id="api">API</h1>
 <p>Stability: Experimental</p>
-<h2 id="include-client-into-web-page">include client into web page</h2>
-<pre><code>&lt;script src=&quot;../build/mqtt-reqres-browser.js&quot;&gt;&lt;/script&gt;
-
-// or minified
-
-&lt;script src=&quot;../build/mqtt-reqres-browser.min.js&quot;&gt;&lt;/script&gt;
-
-..
-
-&lt;script type=&quot;text/javascript&quot;&gt;
-
-  client = new MqttReqRes();
-  ..  
-&lt;/script&gt;</code></pre>
-<h2 id="use-the-client-as-a-module">use the client as a module</h2>
-<pre><code>var MqttReqRes = require(&#39;mqtt-reqres&#39;);</code></pre>
 <h2 id="methods">Methods</h2>
 <h3 id="mqttreqresoptions">MqttReqRes([options])</h3>
 <p>constructor</p>
@@ -55,7 +39,7 @@
     console.error(reason);
   });</code></pre>
 <h3 id="onrequestcallback">onRequest(callback)</h3>
-<p>defines a connection-specific request handler callback function. The handler function is called internally on each request received from connected client.</p>
+<p>defines a request handler callback function. The handler function is called internally on each request received from connected client.</p>
 <p><strong>callback</strong> function required; callback takes these arguments:</p>
 <ul>
 <li>object <strong>req</strong> the request object with properties object <code>connection</code>, string <code>topic</code>, string <code>type</code> and string|object|ArrayBuffer <code>payload</code></li>
@@ -159,6 +143,22 @@ clientA.disconnect(&#39;client-b&#39;)
 <pre><code>client.on(&#39;client-connect&#39;, function (clientId) {
   log(&#39;on.client-connect &#39; + clientId);
 });</code></pre>
+<h2 id="include-client-into-web-page">include client into web page</h2>
+<pre><code>&lt;script src=&quot;../build/mqtt-reqres-browser.js&quot;&gt;&lt;/script&gt;
+
+// or minified
+
+&lt;script src=&quot;../build/mqtt-reqres-browser.min.js&quot;&gt;&lt;/script&gt;
+
+..
+
+&lt;script type=&quot;text/javascript&quot;&gt;
+
+  client = new MqttReqRes();
+  ..  
+&lt;/script&gt;</code></pre>
+<h2 id="use-the-client-as-a-module">use the client as a module</h2>
+<pre><code>var MqttReqRes = require(&#39;mqtt-reqres&#39;);</code></pre>
 <h2 id="test">test</h2>
 <p>runs mocha specs in /test</p>
 <pre><code>$ npm test

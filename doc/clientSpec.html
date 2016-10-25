@@ -197,12 +197,13 @@ clientA.connect()
       <span class="hljs-keyword">try</span> {
 
         debug(<span class="hljs-string">'ClientB.on request'</span>, req.payload);
+
         assert.isString(req.topic);
         assert.isObject(req.connection);
         assert.strictEqual(req.type, <span class="hljs-string">'string'</span>);
         assert.strictEqual(req.payload, <span class="hljs-string">'hello'</span>);
-        res.send(<span class="hljs-string">'foo'</span>);
 
+        res.send(<span class="hljs-string">'foo'</span>);
       }
       <span class="hljs-keyword">catch</span>(e) {
         debug(e);
@@ -217,8 +218,9 @@ clientA.connect()
         <span class="hljs-keyword">return</span> clientA.request(clientBId, <span class="hljs-string">'hello'</span>);
       })
       .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">res</span>) </span>{
-        assert.strictEqual(res.type, <span class="hljs-string">'string'</span>);
+        </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>check response received by client A </p></div></div><div class="code"><div class="wrapper">        assert.strictEqual(res.type, <span class="hljs-string">'string'</span>);
         assert.strictEqual(res.payload, <span class="hljs-string">'foo'</span>);
+
         closeClients(clientA, clientB).then(() =&gt; done());
       })
       .catch(pcatch);
@@ -340,7 +342,7 @@ assert.deepEqual(
   });
 
 
-  xit(<span class="hljs-string">'should request with meta data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
+  it(<span class="hljs-string">'should request with meta data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
 
     clientA = newClient(clientAId);
 
@@ -355,7 +357,7 @@ assert.deepEqual(
     });</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>define request handler</p></div></div><div class="code"><div class="wrapper">    clientB.onRequest(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">req, res</span>) </span>{
       <span class="hljs-keyword">try</span> {
         debug(<span class="hljs-string">'ClientB.on request'</span>, req.payload);
-        assert.strictEqual(req.meta, {foo: <span class="hljs-string">'bar'</span>});
+        assert.deepEqual(req.meta, {foo: <span class="hljs-string">'bar'</span>});
         res.send(<span class="hljs-string">''</span>);
         closeClients(clientA, clientB).then(() =&gt; done());
       }
@@ -372,7 +374,7 @@ assert.deepEqual(
   });
 
 
-  xit(<span class="hljs-string">'should response with meta data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
+  it(<span class="hljs-string">'should respond with meta data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
 
     clientA = newClient(clientAId);
 
@@ -394,7 +396,8 @@ assert.deepEqual(
       })
       .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">res</span>) </span>{
         
-        assert.strictEqual(res.meta, {foo: <span class="hljs-string">'bar'</span>});
+        assert.deepEqual(res.meta, {foo: <span class="hljs-string">'bar'</span>});
+        assert.strictEqual(res.payload, <span class="hljs-string">''</span>);
         
         closeClients(clientA, clientB).then(() =&gt; done());
       })

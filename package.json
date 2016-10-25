@@ -1,6 +1,6 @@
 {
   "name": "mqtt-reqres",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "mqtt request/response client",
   "main": "./lib/mqtt-reqres.js",
   "scripts": {
@@ -23,8 +23,8 @@
     "debug": "^2.2.0",
     "groc": "^0.8.0",
     "jshint": "^2.9.3",
-    "mocha": "^3.1.2",
     "minify": "^2.0.12",
-    "mqtt-reqres-broker": "^0.0.2"
+    "mocha": "^3.1.2",
+    "mqtt-reqres-broker": "0.0.3"
   }
 }

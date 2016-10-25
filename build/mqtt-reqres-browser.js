@@ -205,6 +205,56 @@ A handleConnectAck (connackB, channelNonceB)
 
 B connect(A): vice versa
 
+
+mqtt messages types by topicPath[3]
+
+  message topic publish -t message/<from-device-id>/<to-channel-id>/<mqtt-message-type>
+
+- request: message-id
+- response: message-id responds-to
+- stream: message-id, stream-id, message-target-property
+- stream-end: message-id, stream-id
+- request-end: message-id
+- response-end: message-id
+- chunk: stream-id chunk-id
+
+- chunk-ack: to-id
+- stream-end-ack: to-id 
+- request-end-ack: to-id
+- response-end-ack: to-id
+
+- stream-ack: to-id 
+- request-ack: to-id
+- response-ack: to-id
+
+
+message flow:
+
+  A: request
+  B: request-ack
+      A: stream
+      B: stream-ack
+        A: chunk 
+          B: chunk-ack
+        .. A: chunk
+      A: stream-end
+      B: stream-end-ack
+      ..A: stream
+      A: request-end
+      B: request-end-ack
+      B: response
+      A: response-ack
+        B: stream
+        A: stream-ack
+          B: chunk
+            A: chunk-ack
+          .. B: chunk
+        B: stream-end
+        A: stream-end-ack
+        .. B: stream
+        B: response-end
+        A: response-end-ack
+
 */
 
 // ### export module
@@ -220,6 +270,31 @@ module.exports = function () {
   var noop = function () {};
 
   var MAX_CHUNK_SIZE = 1024 * 64;
+  var MAX_HASH_LENGTH = 81;  // 81
+
+  var CLIENT_ID_LENGTH = 23; // 23
+  var CHANNEL_ID_LENGTH = 25; // 25
+  var CHANNEL_NONCE_LENGTH = 25; // 25
+  var MESSAGE_ID_LENGTH = 20; // 20
+  var STREAM_ID_LENGTH = 10; // 10
+  var CHUNK_ID_LENGTH = 10; // 10
+
+  var messageTypes = [
+    'request',        
+    'request-ack',        
+    'request-end',     
+    'request-end-ack',     
+    'response',        
+    'response-ack',   
+    'response-end',    
+    'response-end-ack',    
+    'stream',          
+    'stream-ack',        
+    'stream-end',      
+    'stream-end-ack',      
+    'chunk',         
+    'chunk-ack'     
+  ];
 
   /*
     ### class MqttReqRes
@@ -280,7 +355,8 @@ module.exports = function () {
     hash = shasum.finalize();
 
     return hash.toString(CryptoJS.enc.Base64)
-      .replace(/\W/g,'');
+      .replace(/\W/g,'')
+      .substr(0, MAX_HASH_LENGTH);
   };
 
 
@@ -330,13 +406,20 @@ module.exports = function () {
 
     debug('initialize()', options);
 
+    var self = this;
+
     // remove all internal listeners
     this.removeAllListeners('_broker-connect');
-    this.removeAllListeners('_response');
     this.removeAllListeners('_client-connack');
-    this.removeAllListeners('_stream-request-chunk');
-    this.removeAllListeners('_stream-on-request-chunk');
-    this.removeAllListeners('_stream-response-chunk');
+    this.removeAllListeners('_chunk-sent');
+
+    messageTypes.forEach(function (messageType) {
+     self.removeAllListeners('_mqtt-message-' + messageType);
+    });
+    
+    // this.removeAllListeners('_stream-request-chunk');
+    // this.removeAllListeners('_stream-on-request-chunk');
+    // this.removeAllListeners('_stream-response-chunk');
 
     this.mqttClient = null;
 
@@ -346,7 +429,7 @@ module.exports = function () {
 
     // The Server MUST allow ClientIds which are between 1 and 23 UTF-8 encoded bytes in 
     // length, and that contain only the characters 0-9a-Z
-    this.clientId = options.clientId || MqttReqRes.randomString(23);
+    this.clientId = options.clientId || MqttReqRes.randomString(CLIENT_ID_LENGTH);
 
     this.subscribedConnect = false;
     this.isWaitingForMqttClientMessages = false;
@@ -417,20 +500,19 @@ module.exports = function () {
   };
 
 
-  // ### request(string toClientid, string|object|ArrayBuffer payload)
-  // override request 
-  MqttReqRes.prototype.request = function (toClientId, payload) {
+  // ### streamSend (connection, messageId, msgTargetProperty, payload)
+  // send a string|object|ArrayBuffer payload within an existing message
+  MqttReqRes.prototype.streamSend = function (connection, messageId, msgTargetProperty, payload) {
 
-    debug('%s request(%s)', this.clientId, toClientId);
+    debug(
+      '%s streamSend(%s, %s, %s)', 
+      this.clientId, connection.clientId, messageId, msgTargetProperty, payload
+    );
 
     var self = this,
       type,
-      offset = 0,
       payloadLength,
-      chunkno = 0,
-      remainingLength,
-      streamId = MqttReqRes.randomString(),
-      eos = false;
+      streamId = MqttReqRes.randomString(STREAM_ID_LENGTH);
     
     if (payload instanceof ArrayBuffer) {
       // ArrayBuffer
@@ -440,10 +522,11 @@ module.exports = function () {
       type = 'JSON';
     }
     else {
+      // string instanceof Object -> false
       type = 'string';
     }
     
-    debug('%s request() type: %s', this.clientId, type);    
+    debug('%s streamSend() type: %s', this.clientId, type);    
 
     if (type === 'JSON') {
       // payload as a JSON string
@@ -454,30 +537,63 @@ module.exports = function () {
       payload = String(payload);      
     }
 
-    remainingLength = payloadLength = (type === 'ArrayBuffer' ? 
-          payload.byteLength : payload.length);
+    payloadLength = (type === 'ArrayBuffer' ? 
+      payload.byteLength : payload.length);
 
 
-    function chunkRequest () {
+    // _mqtt-message-stream: message-id, stream-id, message-target-property
+    function sendStreamMessage () {
 
-      debug(
-        '%s chunkRequest() chunkno %d remainingLength %d', 
-        self.clientId, chunkno, remainingLength
-      );
+      debug('%s sendStreamMessage() to %s', self.clientId, connection.clientId);
+
+      try {
+        return self.mqttPublish(connection, 'stream', JSON.stringify({
+          messageId: messageId,
+          streamId: streamId,
+          type: type,
+          targetProperty: msgTargetProperty
+        }))
+        .then(function() {
+          return self.waitForAck('stream-ack', streamId);
+        });
+      }
+      catch (e) {
+        debug(e);
+        return Promise.reject(e);
+      }
+    }
+
+
+    function sendChunks () {
+
+      var offset = 0,
+        chunkno = 0,
+        remainingLength = payloadLength,
+        chunkSize,
+        eos = false;
 
       return new Promise (function (resolve, reject) {
 
-        var chunkSize,
-          chunkStr,
-          chunkUint8Array,
-          messageChunkStr;
+        /*jshint latedef:false*/
+        
+        function nextChunk () {
 
-        chunkSize = remainingLength >= MAX_CHUNK_SIZE ?
-          MAX_CHUNK_SIZE : remainingLength;
+          var chunkStr,
+            chunkUint8Array;
 
-        eos = chunkSize === remainingLength;
+          chunkSize = remainingLength >= MAX_CHUNK_SIZE ?
+            MAX_CHUNK_SIZE : remainingLength;
 
-        if (chunkSize) {
+          eos = chunkSize === remainingLength;
+
+          debug('%s sendChunks().nextChunk(): payloadLength %d remainingLength %d chunkno %d chunkSize %d eos %s',
+            self.clientId, payloadLength,
+            remainingLength,
+            chunkno,
+            chunkSize,
+            eos
+          );
+
           if (type === 'ArrayBuffer') {
             // chunk as Uint8Array
             // new Uint8Array(buffer [, byteOffset [, length]]);
@@ -488,225 +604,1206 @@ module.exports = function () {
           else {
             chunkStr = payload.substr(offset, chunkSize);
           }
-        }
 
-        messageChunkStr = JSON.stringify({
-            streamId: streamId,
-            data: chunkStr,
-            type: type,
-            chunkno: chunkno,
-            eos: eos
-          });
-
-        self.requestChunk(toClientId, messageChunkStr)
-          .then(function (response) {
-
-            debug('%s chunkRequest () responded', self.clientId);
+          self.streamSendChunk(connection, streamId, chunkStr)
+            .then(function() {
             
-            offset += chunkSize;
+              offset += chunkSize;
 
-            remainingLength = payloadLength - offset;
+              remainingLength = payloadLength - offset;
 
-            self.emit(
-              '_stream-request-chunk', 
-              {streamId: streamId, response: response, eos: eos}
-            );
-
-            resolve();
-          })
-          .catch(reject); 
-      });
-    }
-
-    function waitForChunksDone () {
-
-      debug(
-        '%s waitForChunksDone() streamId %s payloadLength %d', 
-        self.clientId, streamId, payloadLength
-      );
-
-      return new Promise (function (resolve, reject) {
-
-        function onStreamChunk (ev) {
-          if (ev.streamId === streamId) {
-
-            if (ev.eos) {
-              self.removeListener('_stream-request-chunk', onStreamChunk);
-              resolve(ev.response);
-            }
-            else {
-              // start next chunk request
-              ++chunkno;
-              chunkRequest().catch(reject);
-            }
-          }
+              self.emit('_chunk-sent', streamId);
+            })
+            .catch(function (reason) {
+              self.removeListener('_chunk-sent', onChunkSent);
+              reject(reason);
+            });
         }
-        
-        self.on('_stream-request-chunk', onStreamChunk);
 
-        // start first chunk request
-        chunkRequest().catch(reject);
+
+        function onChunkSent (chunkSentStreamId) {
+          
+          if (chunkSentStreamId !== streamId) {
+            // not this stream
+            return;
+          }
+
+          if (eos) {
+            self.removeListener('_chunk-sent', onChunkSent);
+            resolve();
+          }
+          else {
+            // start next chunk request
+            ++chunkno;
+            nextChunk();
+          }// jshint ignore:line
+        } 
+
+
+        self.on('_chunk-sent', onChunkSent);
+
+        nextChunk();
       });
     }
 
-    return waitForChunksDone();
-    // return MqttReqRes.prototype.request.apply(this, arguments); 
+
+    // _mqtt-message-stream-end: message-id, stream-id
+    function sendStreamEndMessage () {
+      debug('%s sendStreamEndMessage() to %s', self.clientId, connection.clientId);
+
+      try {
+        return self.mqttPublish(connection, 'stream-end', JSON.stringify({
+          messageId: messageId,
+          streamId: streamId
+        }))
+        .then(function() {
+          return self.waitForAck('stream-end-ack', streamId);
+        });
+      }
+      catch (e) {
+        debug(e);
+        return Promise.reject(e);
+      }
+    }
+
+
+    return this.connect(connection.clientId) 
+      .then(sendStreamMessage)
+      .then(sendChunks)
+      .then(sendStreamEndMessage);
   };
 
 
-  // ### MqttReqRes.requestChunk(toClientId, messageChunkStr) 
-  MqttReqRes.prototype.requestChunk = function (toClientId, messageChunkStr) {
+  // ### streamSendChunk (connection, streamId, messageChunkStr) 
+  // send a chunk message string
+  // return Promise.resolve when connected, sent and acked
+  MqttReqRes.prototype.streamSendChunk = function (connection, streamId, messageChunkStr) {
+
+    var self = this,
+      req,
+      // generate a chunk id
+      chunkId = MqttReqRes.randomString(CHUNK_ID_LENGTH);
+
+    // debug('%s streamSendChunk() to %s messageChunkStr "%s", connection:', 
+    //   this.clientId, connection.clientId,
+    //   messageChunkStr,
+    //   connection
+    // );
+
+    // -mqtt-message-chunk: stream-id chunk-id payload
+    function publishChunk () {
+
+      debug('%s publishChunk() to %s', self.clientId, connection.clientId);
+      try {
+
+        // build message object
+        req = {
+          streamId: streamId,
+          // chunk id
+          chunkId: chunkId,
+          payload: MqttReqRes.encrypt(messageChunkStr, connection.sharedSecret) 
+        };
+
+        return self.mqttPublish(connection, 'chunk', JSON.stringify(req));
+      }
+      catch (e) {
+        debug(e);
+        return Promise.reject(e);
+      }
+    }
+
+    return this.connect(connection.clientId)
+      .then(publishChunk)
+      .then(function () {
+        return self.waitForAck('chunk-ack', chunkId);
+      });
+  };
+
+
+  MqttReqRes.prototype.sendAck = function (connection, ackMessageName, toId) {
+
+    debug(
+      '%s sendAck(%s, %s, toId %s)', this.clientId,
+      connection.clientId, ackMessageName, toId
+    );
+
+    try {
+      return this.mqttPublish(connection, ackMessageName, JSON.stringify({
+        toId: toId
+      }));
+    }
+    catch (e) {
+      return Promise.reject(e);
+    }
+  };  // sendAck
+
+
+  // ### waitForAck (ackMessageName, toId, [timeout=5000])
+  // generic wait for ack message
+  // - chunk-ack: to-id
+  // - stream-ack: to-id 
+  // - stream-end-ack: to-id 
+  // - request-ack: to-id
+  // - request-end-ack: to-id
+  // - response-ack: to-id
+  // - response-end-ack: to-id
+  MqttReqRes.prototype.waitForAck = function (ackMessageName, toId, timeout) {
+
+    var self = this,
+      ackEventName = '_mqtt-message-' + ackMessageName;
+
+    timeout = timeout || 5000;
+
+    debug(
+      '%s waitForAck(%s, %s, %d)', this.clientId,
+      ackMessageName, toId, timeout
+    );
+
+    return new Promise (function (resolve, reject) {
+
+        var acked = false;
+
+        function handleAck (topicPath, ackMessage) {
+          debug('%s handleAck(%s), waits for: "%s"', self.clientId, ackMessage.toId, ackEventName);
+          if (ackMessage.toId === toId) {
+            acked = true;
+            self.removeListener(ackEventName, handleAck);
+            resolve();
+          }
+        }
+
+        self.on(ackEventName, handleAck);
+
+        // reject on timeout
+        setTimeout(function () {
+          if (!acked) {
+            self.removeListener(ackEventName, handleAck);
+            reject(new Error('EACKTIMEOUT'));
+          }
+        }, timeout);     
+    });
+  };  // waitForAck
+
+
+  // ### publish
+  // generic mqtt publish
+  MqttReqRes.prototype.mqttPublish = function (connection, subTopic, messageStr) {
+
+    debug(
+      '%s mqttPublish(%s, %s)', this.clientId,
+      connection.clientId, subTopic
+      // , messageStr
+    );
+
+    var self = this;
+
+    return new Promise (function (resolve, reject) {
+      try {
+        // pubish message
+        self.mqttClient.publish(        
+          connection.topicSend + subTopic, 
+          messageStr, 
+          {qos: 0}, 
+          function (err) {
+            if (err) {
+              debug(err);
+              reject(err);
+            }
+            else {
+              resolve();
+            }
+          }
+        );
+      }
+      catch (e) {
+        reject(e);
+      }
+    });
+  };  // mqttPublish
+
+
+  // ### request(string toClientId, string|object|ArrayBuffer payload, object meta)
+  // A: request
+  MqttReqRes.prototype.request = function (toClientId, payload, meta) {
 
     debug('%s request(%s)', this.clientId, toClientId);
 
     var self = this,
-      connection,
-      req,
-      requestId,
-      secret;
-
-    function sendRequest () {
-
-      debug('%s sendRequest() to %s', self.clientId, toClientId);
-
-      return new Promise (function (resolve, reject) {
-
-        try {
-
-          connection = self.getConnection(toClientId);
-
-          if (!connection) {
-            reject('ECLIENTCONNECTION');
-            return;
-          }
-          
-          // generate a chunk request id
-          requestId = MqttReqRes.randomString(30);
-
-          secret = MqttReqRes.secret(connection);
-
-          // build request object
-          req = {
-            requestId: requestId,
-            payload: MqttReqRes.encrypt(messageChunkStr, secret) 
-          };
-
-          // pubish request
-          self.mqttClient.publish(        
-            connection.topicSend, 
-            JSON.stringify(req), 
-            {qos: 0}, 
-            function (err) {
-              if (err) {
-                debug(err);
-                reject(err);
-              }
-              else {
-                resolve();
-              }
-            }
-          );
-        }
-        catch (e) {
-          debug(e);
-          reject(e);
-        }
-      });
-    }
-
+      messageId = MqttReqRes.randomString(MESSAGE_ID_LENGTH),
+      connection;
 
     return this.connect(toClientId)
-      .then(sendRequest)
+      .then(function() {
+
+        connection = self.getConnection(toClientId);
+
+        if (!connection) {
+          return Promise.reject(new Error('ECLIENTCONNECTION'));
+        }
+
+        // secret = this.getSharedSecret(connection);
+
+        return self.mqttPublish(connection, 'request', JSON.stringify({
+          messageId: messageId
+        }));
+      })
       .then(function () {
-        return self.requestPromiseResponse(requestId, secret);
+        return self.waitForAck('request-ack', messageId);
+      })      
+      .then(function () {
+        if (typeof meta !== 'object') {
+          // meta object is optional
+          return Promise.resolve();
+        }
+        // meta streamSend (connection, messageId, msgTargetProperty, payload)
+        return self.streamSend(connection, messageId, 'meta', meta);
+      })
+      .then(function () {
+        // payload streamSend (connection, messageId, msgTargetProperty, payload)
+        return self.streamSend(connection, messageId, 'payload', payload);
+      })
+      .then(function () {
+        self.mqttPublish(connection, 'request-end', JSON.stringify({
+          messageId: messageId
+        }));
+      })
+      .then(function () {
+        return self.waitForAck('request-end-ack', messageId);
+      })
+      .then(function () {
+        return self.waitForResponse(connection, messageId);
       });
-  };
+  };  // request
 
 
-  // ### MqttReqRes.requestPromiseResponse(requestId, secret)
-  MqttReqRes.prototype.requestPromiseResponse = function (requestId, secret) {
+  // ### waitForResponse(connection, toMessageId)
+  // A: response-ack
+  MqttReqRes.prototype.waitForResponse = function (connection, toMessageId) {
+  
+    debug('%s waitForResponse(toMessageId %s)', this.clientId, toMessageId);
 
-    debug('%s requestPromiseResponse()', this.clientId);
-
-    var self =  this;
-    
-    return new Promise (function (resolve, reject) {
-
-      var result = {
-        payload: null,
-        type: null
+    var self = this,
+      responseMessageId,
+      response = {
+        errors: []
       };
 
 
-      function handleResponse (responseMessage) {
+    function waitForMqttResponseMessage () {
 
-        var chunk;
-        
-        if (responseMessage.respondsTo === requestId) {
-          
-          try {
+      return new Promise (function (resolve, reject) {
 
-            chunk = JSON.parse(MqttReqRes.decrypt(responseMessage.payload, secret));
-            if (!result.type) {
+          var received = false;
 
-              result.type = chunk.type;
+          function handleResponseMessage (topicPath, responseMessage) {
 
-              debug(
-                '%s requestPromiseResponse.handleResponse() chunk type is %s', 
-                self.clientId, result.type
-              );              
-            }
+            if (responseMessage.respondsTo === toMessageId) {
+            
+              received = true;
+              responseMessageId = responseMessage.messageId;
 
-            if (result.type === 'ArrayBuffer') {
-             
-              if (result.payload === null) {
-                result.payload = [];
-              }
+              self.removeListener('_mqtt-message-response', handleResponseMessage);
 
-              chunk.data.split(',').forEach(function (byteStr) {
-                result.payload.push(byteStr);
-              });
-            } 
-            else {
-              // assume type string or JSON
-              if (result.payload === null) {
-                result.payload = '';
-              }
-              result.payload += chunk.data;
-            }
-
-            if (chunk.eos) {
-              
-              self.removeListener('_response', handleResponse);
-
-              if (result.type === 'ArrayBuffer') {
-                result.payload = Uint8Array.from(result.payload).buffer;
-              }
-              else if (result.type === 'Object') {
-                result.payload = JSON.parse(result.payload);
-              }
-
-              resolve(result);
-              self.emit('response', result);
+              // A: response-ack
+              self.sendAck(connection, 'response-ack', responseMessageId)
+                .then(resolve)
+                .catch(reject);
             }
           }
-          catch(e) {
-            reject(e);
-          }
-        }
+
+          self.on('_mqtt-message-response', handleResponseMessage);
+
+          // reject on timeout
+          setTimeout(function () {
+            if (!received) {
+              self.removeListener('_mqtt-message-response', handleResponseMessage);
+              reject(new Error('ERESPONSETIMEOUT'));
+            }
+          }, 5000);     
+      });
+    } // waitForMqttResponseMessage
+
+
+    function receiveStream (topicPath, mqttStreamMessage) {
+
+      if (mqttStreamMessage.messageId !== responseMessageId) {
+        return;
       }
 
-      self.on('_response', handleResponse);
-    });
+      self.receiveStream(connection, mqttStreamMessage)
+        .then(function (streamResult) {
+
+          if (mqttStreamMessage.targetProperty === 'payload') {
+            response.type = mqttStreamMessage.type;
+          }
+
+          response[mqttStreamMessage.targetProperty] = streamResult;
+        })
+        .catch(function (reason) {
+          response.errors.push(reason);
+        });
+    }
+
+
+    function waitForResponseEnd () {
+
+      return new Promise (function (resolve, reject) {
+
+          function handleResponseEndMessage (topicPath, responseEndMessage) {
+
+            if (responseEndMessage.messageId === responseMessageId) {
+
+              self.removeListener('_mqtt-message-response-end', handleResponseEndMessage);
+
+              // A: response-end-ack
+              self.sendAck(connection, 'response-end-ack', responseMessageId)
+                .then(resolve)
+                .catch(reject);
+            }
+          }
+
+          self.on('_mqtt-message-response-end', handleResponseEndMessage);
+      });
+    } // waitForResponseEnd
+
+
+    return waitForMqttResponseMessage()
+      .then(function () {
+        self.on('_mqtt-message-stream', receiveStream);
+        return waitForResponseEnd();
+      })
+      .then(function () {
+        self.removeListener('_mqtt-message-stream', receiveStream);
+        return Promise.resolve(response);
+      })
+      .catch(function (reason) {
+        self.removeListener('_mqtt-message-stream', receiveStream);
+        return Promise.reject(reason);        
+      });
+  };  // waitForResponse
+
+
+  MqttReqRes.prototype.receiveStream = function (connection, mqttStreamMessage) {
+    
+    var self = this,
+      streamId = mqttStreamMessage.streamId,
+      type = mqttStreamMessage.type,
+      streamResult = null,
+      error;
+
+    function receiveChunk (topicPath, mqttChunkMessage) {
+
+      var chunkData;
+      try {
+
+        if (mqttChunkMessage.streamId !== streamId) {
+          return;
+        }
+
+        chunkData = MqttReqRes.decrypt(mqttChunkMessage.payload, connection.sharedSecret);
+
+        if (type === 'ArrayBuffer') {
+         
+          if (streamResult === null) {
+            streamResult = [];
+          }
+
+          chunkData.split(',').forEach(function (byteStr) {
+            streamResult.push(byteStr);
+          });
+        } 
+        else {
+          // assume type 'string' or 'JSON'
+          if (streamResult === null) {
+            streamResult = '';
+          }
+          streamResult += chunkData;
+        }
+
+        self.sendAck(connection, 'chunk-ack', mqttChunkMessage.chunkId)
+          .catch(function (reason) {
+            error = reason;
+          });
+      }
+      catch (e) {
+        error = e;
+      }
+    }
+
+
+    function waitForResponseStreamEnd () {
+
+      return new Promise (function (resolve, reject) {
+
+          function handleResponseStreamEndMessage (topicPath, streamEndMessage) {
+
+            if (streamEndMessage.streamId === streamId) {
+          
+              self.removeListener('_mqtt-message-stream-end', handleResponseStreamEndMessage);
+
+              // A: stream-end-ack
+              self.sendAck(connection, 'stream-end-ack', streamId)
+                .then(resolve)
+                .catch(reject);
+            }
+          }
+
+          self.on('_mqtt-message-stream-end', handleResponseStreamEndMessage);
+      });
+    } // waitForResponseStreamEnd
+
+
+    return this.sendAck(connection, 'stream-ack', streamId)
+      .then(function () {
+        self.on('_mqtt-message-chunk', receiveChunk);
+        return waitForResponseStreamEnd();
+      })
+      .then(function () {
+
+        self.removeListener('_mqtt-message-chunk', receiveChunk);
+        
+        if (error) {
+          return Promise.reject(error);
+        }
+        
+        try {
+
+          if (type === 'ArrayBuffer') {
+            streamResult = Uint8Array.from(streamResult).buffer;
+          }
+          else if (type === 'JSON') {
+            streamResult = JSON.parse(streamResult);
+          }
+          
+          return Promise.resolve(streamResult);
+        }
+        catch (e) {
+          return Promise.reject(e);
+        }
+      })
+      .catch(function (reason) {
+        self.removeListener('_mqtt-message-chunk', receiveChunk);
+        return Promise.reject(reason);        
+      });
+  };  // receiveStreams
+
+
+  // ### onRequest(function onRequestHandler)
+  MqttReqRes.prototype.onRequest = function (onRequestCallback) {
+
+    debug('%s onRequest()', this.clientId);
+
+    this.fnOnRequest = onRequestCallback; 
+    
+    return this;
   };
+
+
+  // ### MqttReqRes.handleRequestMessage(topicPath, requestMessage) 
+  MqttReqRes.prototype.handleRequestMessage = function (topicPath, requestMessage) {
+    
+    debug('%s handleRequestMessage(%s)', this.clientId, topicPath.join('/'));
+
+    var self = this,
+      fromClientId,
+      connection,
+      secret,
+      requestMessageId,
+      request = {
+        errors: []
+      };
+
+
+    function receiveStream (topicPath, mqttStreamMessage) {
+
+      if (mqttStreamMessage.messageId !== requestMessageId) {
+        return;
+      }
+
+
+      self.receiveStream(connection, mqttStreamMessage)
+        .then(function (streamResult) {
+
+          if (mqttStreamMessage.targetProperty === 'payload') {
+            request.type = mqttStreamMessage.type;
+          }
+
+          request[mqttStreamMessage.targetProperty] = streamResult;
+        })
+        .catch(function (reason) {
+          request.errors.push(reason);
+        });
+    }
+
+
+    function waitForRequestEnd () {
+
+      return new Promise (function (resolve, reject) {
+
+          function handleRequestEndMessage (topicPath, requestEndMessage) {
+
+            if (requestEndMessage.messageId === requestMessageId) {
+
+              self.removeListener('_mqtt-message-request-end', handleRequestEndMessage);
+
+              // B: request-end-ack
+              self.sendAck(connection, 'request-end-ack', requestMessageId)
+                .then(resolve)
+                .catch(reject);
+            }
+          }
+
+          self.on('_mqtt-message-request-end', handleRequestEndMessage);
+      });
+    } // waitForRequestEnd
+
+
+    try {
+
+      if ('function' !== typeof this.fnOnRequest) {
+        // no request handler defined, ignore message request
+        return this;
+      }
+
+      fromClientId = topicPath[1];
+
+      connection = this.getConnection(fromClientId, true);
+      secret = this.getSharedSecret(connection);
+
+      requestMessageId = requestMessage.messageId;
+
+      this.connect(fromClientId, secret)
+        .then(function() {
+          return self.sendAck(connection, 'request-ack', requestMessageId);
+        })
+        .then(function () {
+
+          self.on('_mqtt-message-stream', receiveStream);
+
+          return waitForRequestEnd();
+        })
+        .then(function () {
+
+          var req, res;
+
+          self.removeListener('_mqtt-message-stream', receiveStream);
+
+          req = {
+            topic: topicPath.join('/'),
+            payload: request.payload,
+            type: request.type,
+            meta: request.meta,
+            errors: request.errors,
+            connection: connection
+          };
+
+          res = {
+            respondsTo: requestMessageId,
+            send: function (payload, meta) {
+              return self.sendResponse(connection, requestMessageId, payload, meta);
+            }
+          };
+
+          // call request handler
+          self.fnOnRequest(req, res);
+
+        })
+        .catch(function (reason) {
+
+          self.removeListener('_mqtt-message-stream', receiveStream);
+          debug(reason);
+          // return Promise.reject(reason);        
+        });      
+    }
+    catch (e) {
+      debug(e);
+    }
+
+    return this;
+  };
+
+
+  // ### sendResponse(object connection, string respondToRequestId, string|object|ArrayBuffer payload, object meta)
+  MqttReqRes.prototype.sendResponse = function (connection, respondToRequestId, payload, meta) {
+
+    debug('%s sendResponse(%s, %s)', this.clientId, connection.clientId, respondToRequestId);
+
+
+    var self = this,
+      messageId = MqttReqRes.randomString(MESSAGE_ID_LENGTH);
+
+    return this.connect(connection.clientId)
+      .then(function() {
+        return self.mqttPublish(connection, 'response', JSON.stringify({
+          messageId: messageId,
+          respondsTo: respondToRequestId
+        }));
+      })
+      .then(function () {
+        return self.waitForAck('response-ack', messageId);
+      })      
+      .then(function () {
+        if (typeof meta !== 'object') {
+          // meta object is optional
+          return Promise.resolve();
+        }
+        // meta streamSend (connection, messageId, msgTargetProperty, payload)
+        return self.streamSend(connection, messageId, 'meta', meta);
+      })
+      .then(function () {
+        // payload streamSend (connection, messageId, msgTargetProperty, payload)
+        return self.streamSend(connection, messageId, 'payload', payload);
+      })
+      .then(function () {
+        self.mqttPublish(connection, 'response-end', JSON.stringify({
+          messageId: messageId
+        }));
+      })
+      .then(function () {
+        return self.waitForAck('response-end-ack', messageId);
+      });
+  };
+
+
+
+
+
+
+
+
+
+  // // ### MqttReqRes.requestChunk(toClientId, messageChunkStr) 
+  // MqttReqRes.prototype.requestChunk = function (toClientId, messageChunkStr) {
+
+  //   debug('%s request(%s)', this.clientId, toClientId);
+
+  //   var self = this,
+  //     connection,
+  //     req,
+  //     requestId,
+  //     secret;
+
+  //   function sendRequest () {
+
+  //     debug('%s sendRequest() to %s', self.clientId, toClientId);
+
+  //     return new Promise (function (resolve, reject) {
+
+  //       try {
+
+  //         connection = self.getConnection(toClientId);
+
+  //         if (!connection) {
+  //           reject('ECLIENTCONNECTION');
+  //           return;
+  //         }
+          
+  //         // generate a chunk request id
+  //         requestId = MqttReqRes.randomString(30);
+
+  //         secret = MqttReqRes.secret(connection);
+
+  //         // build request object
+  //         req = {
+  //           // chunk request id
+  //           requestId: requestId,
+  //           payload: MqttReqRes.encrypt(messageChunkStr, secret) 
+  //         };
+
+  //         // pubish request
+  //         self.mqttClient.publish(        
+  //           connection.topicSend, 
+  //           JSON.stringify(req), 
+  //           {qos: 0}, 
+  //           function (err) {
+  //             if (err) {
+  //               debug(err);
+  //               reject(err);
+  //             }
+  //             else {
+  //               resolve();
+  //             }
+  //           }
+  //         );
+  //       }
+  //       catch (e) {
+  //         debug(e);
+  //         reject(e);
+  //       }
+  //     });
+  //   }
+
+
+  //   return this.connect(toClientId)
+  //     .then(sendRequest)
+  //     .then(function () {
+  //       return self.requestPromiseResponse(requestId, secret);
+  //     });
+  // };
+
+
+  // // ### MqttReqRes.requestPromiseResponse(requestId, secret)
+  // MqttReqRes.prototype.requestPromiseResponse = function (requestId, secret) {
+
+  //   debug('%s requestPromiseResponse()', this.clientId);
+
+  //   var self =  this;
+    
+  //   return new Promise (function (resolve, reject) {
+
+  //     var result = {
+  //       payload: null,
+  //       type: null
+  //     };
+
+
+  //     function handleResponse (responseMessage) {
+
+  //       var chunk;
+        
+  //       if (responseMessage.respondsTo === requestId) {
+          
+  //         try {
+
+  //           chunk = JSON.parse(MqttReqRes.decrypt(responseMessage.payload, secret));
+
+  //           if (!result.type) {
+
+  //             result.type = chunk.type;
+
+  //             debug(
+  //               '%s requestPromiseResponse.handleResponse() chunk type is %s', 
+  //               self.clientId, result.type
+  //             );              
+  //           }
+
+  //           if (result.type === 'ArrayBuffer') {
+             
+  //             if (result.payload === null) {
+  //               result.payload = [];
+  //             }
+
+  //             chunk.data.split(',').forEach(function (byteStr) {
+  //               result.payload.push(byteStr);
+  //             });
+  //           } 
+  //           else {
+  //             // assume type string or JSON
+  //             if (result.payload === null) {
+  //               result.payload = '';
+  //             }
+  //             result.payload += chunk.data;
+  //           }
+
+  //           if (chunk.eos) {
+              
+  //             self.removeListener('_response', handleResponse);
+
+  //             if (result.type === 'ArrayBuffer') {
+  //               result.payload = Uint8Array.from(result.payload).buffer;
+  //             }
+  //             else if (result.type === 'Object') {
+  //               result.payload = JSON.parse(result.payload);
+  //             }
+
+  //             resolve(result);
+  //             self.emit('response', result);
+  //           }
+  //         }
+  //         catch(e) {
+  //           reject(e);
+  //         }
+  //       }
+  //     }
+
+  //     self.on('_response', handleResponse);
+  //   });
+  // };
+
+
+  // // ### MqttReqRes.handleRequestMessage(topicPath, requestMessage) 
+  // MqttReqRes.prototype.handleRequestMessage = function (topicPath, requestMessage) {
+    
+  //   debug('%s handleRequestMessage(%s)', this.clientId, topicPath.join('/'));
+
+  //   var self = this,
+  //     req,
+  //     res,
+  //     clientId,
+  //     connection,
+  //     secret;
+
+  //   if ('function' !== typeof this.fnOnRequest) {
+  //     // no request handler defined, ignore message request
+  //     return this;
+  //   }
+
+  //   clientId = topicPath[1];
+
+  //   connection = this.getConnection(clientId);
+
+  //   if (!MqttReqRes.isConnected(connection)) {
+  //     // unknown connection, do not respond
+  //     return this;
+  //   }
+
+  //   secret = MqttReqRes.secret(connection);
+
+  //   req = {
+  //     topic: topicPath.join('/'),
+  //     payload: MqttReqRes.decrypt(requestMessage.payload, secret),
+  //     connection: connection
+  //   };
+
+  //   res = {
+  //     respondsTo: requestMessage.chunkId,
+  //     send: function (payload) {
+  //       return self.sendResponse(connection, requestMessage.respondsTo, payload, secret);
+  //     }
+  //   };
+
+  //   // call request handler
+  //   this.fnOnRequest(req, res);
+
+  //   return this;
+  // };
+
+
+  // // ### sendResponse(object connection, string respondToRequestId, string|object|ArrayBuffer payload, string secret)
+  // MqttReqRes.prototype.sendResponse = function (connection, respondToRequestId, payload, secret) {
+
+  //   debug('%s sendResponse() respondToRequestId %s', this.clientId, respondToRequestId);
+
+  //   // ArrayBuffer
+  //   var self = this,
+  //     type,
+  //     offset = 0,
+  //     payloadLength,
+  //     chunkno = 0,
+  //     remainingLength,
+  //     streamId = MqttReqRes.randomString(10),
+  //     eos = false;
+
+
+  //   if (payload instanceof ArrayBuffer) {
+  //     // ArrayBuffer
+  //     type = 'ArrayBuffer';
+  //   }
+  //   else if (payload instanceof Object) {
+  //     type = 'JSON';
+  //   }
+  //   else {
+  //     type = 'string';
+  //   }
+    
+  //   debug('%s sendResponse() type: %s', this.clientId, type);    
+
+  //   if (type === 'JSON') {
+  //     // payload as a JSON string
+  //     payload = JSON.stringify(payload);
+  //   }
+  //   else if (type === 'string'){
+  //     // payload as a string
+  //     payload = String(payload);      
+  //   }
+
+  //   remainingLength = payloadLength = (type === 'ArrayBuffer' ? 
+  //         payload.byteLength : payload.length);
+
+  //   function chunkResponse () {
+
+  //     debug(
+  //       '%s chunkResponse() chunkno %d remainingLength %d', 
+  //       self.clientId, chunkno, remainingLength
+  //     );
+
+  //     return new Promise (function (resolve, reject) {
+
+  //       var chunkSize,
+  //         chunkStr,
+  //         chunkUint8Array,
+  //         message;
+
+  //       chunkSize = remainingLength >= MAX_CHUNK_SIZE ?
+  //         MAX_CHUNK_SIZE : remainingLength;
+
+  //       eos = chunkSize === remainingLength;
+
+  //       if (chunkSize) {
+  //         if (type === 'ArrayBuffer') {
+  //           // chunk as Uint8Array
+  //           // new Uint8Array(buffer [, byteOffset [, length]]);
+  //           chunkUint8Array = new Uint8Array(payload, offset, chunkSize);
+
+  //           chunkStr = chunkUint8Array.join(',');
+  //         }
+  //         else {
+  //           chunkStr = payload.substr(offset, chunkSize);
+  //         }
+  //       }
+
+  //       message = JSON.stringify({
+  //         respondsTo: respondToRequestId,
+  //         streamId: streamId,
+  //         data: chunkStr,
+  //         type: type,
+  //         chunkno: chunkno,
+  //         eos: eos
+  //       });
+
+  //       self.sendResponseChunk(
+  //         connection,
+  //         respondToRequestId,
+  //         message,
+  //         secret
+  //       )
+  //       .then(function () {
+
+  //           debug('%s chunkResponse () resolved', self.clientId);
+            
+  //           offset += chunkSize;
+
+  //           remainingLength = payloadLength - offset;
+
+  //           self.emit(
+  //             '_stream-response-chunk', 
+  //             {streamId: streamId, eos: eos}
+  //           );
+  //         }, reject); 
+  //     });
+  //   } // chunkResponse
+
+
+  //   function waitForResponseChunksDone () {
+
+  //     debug(
+  //       '%s waitForResponseChunksDone() streamId %s payloadLength %d', 
+  //       self.clientId, streamId, payloadLength
+  //     );
+
+  //     return new Promise (function (resolve, reject) {
+
+  //       function onResponseChunk (ev) {
+  //         if (ev.streamId === streamId) {
+
+  //           if (ev.eos) {
+  //             self.removeListener('_stream-response-chunk', onResponseChunk);
+  //             resolve();
+  //           }
+  //           else {
+  //             // start next chunk request
+  //             ++chunkno;
+  //             chunkResponse().catch(reject);            
+  //           }
+  //         }
+  //       }
+        
+  //       self.on('_stream-response-chunk', onResponseChunk);
+
+  //       // start first chunk response
+  //       chunkResponse().catch(reject);
+  //     });
+  //   } // waitForResponseChunksDone
+
+  //   return waitForResponseChunksDone();
+  // };
+
+
+  // // ### MqttReqRes.sendResponseChunk(object connection, string respondToRequestId, string payload, string secret)
+  // MqttReqRes.prototype.sendResponseChunk = function (connection, respondToRequestId, payload, secret) {
+
+  //   debug('%s sendResponseChunk()', this.clientId);
+
+  //   var self = this;
+
+  //   return new Promise (function (resolve, reject) {
+
+  //     var resMessage = {
+  //       respondsTo: respondToRequestId
+  //     };
+
+  //     try {
+  //       resMessage.payload = MqttReqRes.encrypt(payload, secret);
+
+  //       self.mqttClient.publish(        
+  //         connection.topicSend, 
+  //         JSON.stringify(resMessage), 
+  //         {qos: 0}, 
+  //         function (err) {
+  //           if (err) {
+  //             // todo: expose error to this client
+  //             debug(err);
+  //             reject(err);
+  //           }
+  //           else {
+  //             resolve();
+  //           }
+  //         }
+  //       );    
+  //     }
+  //     catch (e) {
+  //       // todo: handle/expose error
+  //       debug(e);
+  //     }
+  //   });
+  // };
+
+
+  // // ### onRequest(function onRequestHandler)
+  // MqttReqRes.prototype.onRequest = function (onRequestCallback) {
+
+  //   debug('%s onRequest()', this.clientId);
+
+  //   var self = this,
+  //     currentStreams = {};
+
+  //   function pWaitForEOS (streamId) {
+
+  //     debug('%s pWaitForEOS(%s)', self.clientId, streamId);
+
+  //     return new Promise (function (resolve, reject) {
+
+  //       var result = null,
+  //         type;
+
+  //       function onStreamOnRequestChunk (req, res, chunk) {
+
+  //         try {
+
+  //         debug(
+  //           '%s onStreamOnRequestChunk() chunkno %d data.length %d', 
+  //           self.clientId, chunk.chunkno, chunk.data.length
+  //         );
+
+  //         if (chunk.streamId === streamId) {
+
+  //           if (!type) {
+  //             type = chunk.type;
+
+  //             debug(
+  //               '%s onStreamOnRequestChunk() chunk type is %s', 
+  //               self.clientId, type
+  //             );              
+  //           }
+
+  //           if (type === 'ArrayBuffer') {
+             
+  //             if (result === null) {
+  //               result = [];
+  //             }
+
+  //             chunk.data.split(',').forEach(function (byteStr) {
+  //               result.push(byteStr);
+  //             });
+  //           } 
+  //           else {
+  //             // assume type string or JSON
+  //             if (result === null) {
+  //               result = '';
+  //             }
+  //             result += chunk.data;
+  //           }
+
+  //           if (chunk.eos) {
+              
+  //             // end of stream
+
+  //             self.removeListener('_stream-on-request-chunk', onStreamOnRequestChunk);
+  //             delete currentStreams[streamId];
+
+  //             if (type === 'ArrayBuffer') {
+  //               req.payload = Uint8Array.from(result).buffer;
+  //             }
+  //             else if (type === 'Object') {
+  //               req.payload = JSON.parse(result);
+  //             }
+  //             else {
+  //               req.payload = result;
+  //             }
+
+  //             req.type = type;
+
+  //             resolve([req, res]);
+  //           }
+  //           else {
+  //             // respond chunk ack
+  //             res.send({
+  //               streamId: streamId,
+  //               chunkno: chunk.chunkno
+  //             });
+  //           }
+  //         }
+
+  //         }
+  //         catch (e) {
+  //           debug(e);
+  //           reject(e);     
+  //         }
+
+  //       } // onStreamOnRequestChunk
+
+  //       self.on('_stream-on-request-chunk', onStreamOnRequestChunk);
+  //     });
+  //   }
+
+
+  //   function onStreamRequest (req, res) {
+
+  //     debug('%s onStreamRequest()', self.clientId);
+
+  //     var streamMessage;
+
+  //     try {
+  //       streamMessage = JSON.parse(req.payload);
+
+  //       if (!streamMessage ||
+  //         !streamMessage.streamId) {
+  //         return;
+  //       }
+
+  //       if (!currentStreams[streamMessage.streamId]) {
+  //         // new stream
+  //         currentStreams[streamMessage.streamId] = pWaitForEOS(streamMessage.streamId)
+  //           .then(function (result) {
+  //             onRequestCallback.apply(self, result);
+  //           });
+  //       }
+
+  //       self.emit('_stream-on-request-chunk', req, res, streamMessage);
+
+  //     }
+  //     catch (e) {
+  //       return;
+  //     }
+  //   } // onStreamRequest
+
+
+  //   this.fnOnRequest = onStreamRequest; 
+    
+  //   return this;
+  // };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   /* 
     #### connect([toClientId, sharedSecret])
 
-    - toClientId string optional default undefined. the id of the client to connect to
-    - sharedSecret string optional, required when toClientId is set
-  */
+    - toClientId string optional default undefined. the id of the client to connect to     
+    - sharedSecret string optional, required when toClientId is set   
+  */   
   MqttReqRes.prototype.connect = function (toClientId, sharedSecret) {
 
     debug('%s connect(%s)', this.clientId, toClientId);
@@ -733,7 +1830,7 @@ module.exports = function () {
           return self.connectToClient(toClientId, sharedSecret);
         }
         else {
-          return Promise.resolve();
+          return Promise.resolve(connection);
         }
       });
   };
@@ -746,7 +1843,6 @@ module.exports = function () {
   MqttReqRes.prototype.connectToBroker = function () {
 
     debug('%s connectToBroker()', this.clientId);
-    // console.log('%s connectToBroker()', this.clientId);
 
     var self = this;
 
@@ -771,22 +1867,30 @@ module.exports = function () {
           port: self.brokerPort,
           clientId: self.clientId
         });
-      
-      self.mqttClient.on('connect', function () {
+
+      function onConnect () {
         self.emit(
           '_broker-connect', 
           // connack packet
           Array.prototype.slice.call(arguments)[0]
         );
-      }); 
+      }
+      
+      self.mqttClient.on('connect', onConnect); 
 
-      self.once('_broker-connect', function () {
+      function onBrokerConnect () {
         connectSuccess = true;
+        self.removeListener('connect', onConnect);
+        self.removeListener('_broker-connect', onBrokerConnect);
         resolve();
-      });
+      }
+
+      self.once('_broker-connect', onBrokerConnect);
 
       setTimeout(function () {
         if (!connectSuccess) {
+          self.removeListener('connect', onConnect);
+          self.removeListener('_broker-connect', onBrokerConnect);          
           reject(new Error('EMQTTCLIENTCONNECTTIMEOUT'));
         }
       }, 3000);
@@ -874,13 +1978,13 @@ module.exports = function () {
     // - else when !connreq || connack !== connreq
 
     //   - set connreq = randomString
-    connection.connreq = MqttReqRes.randomString(30);
+    connection.connreq = MqttReqRes.randomString(CHANNEL_ID_LENGTH);
 
     //   - set connack = null
     connection.connack = null;
 
     //   - set channelNonce = randomString()
-    connection.channelNonce = MqttReqRes.randomString(30);
+    connection.channelNonce = MqttReqRes.randomString(CHANNEL_NONCE_LENGTH);
 
     connection.channelReceiveId = null;
     connection.topicReceive = null;
@@ -945,6 +2049,7 @@ module.exports = function () {
         // reject on timeout
         setTimeout(function () {
           if (!resolved) {
+            self.removeListener('_client-connack', handleClientConnack);
             reject(new Error('ECLIENTCONNACKTIMEOUT'));
           }
         }, 10000);
@@ -1012,6 +2117,11 @@ module.exports = function () {
       }
     });
 
+
+    this.on('_mqtt-message-request', function () {
+      self.handleRequestMessage.apply(self, arguments);
+    });
+
     return this;
   };
 
@@ -1022,7 +2132,8 @@ module.exports = function () {
     debug('%s handleMqttClientMessage(%s)', this.clientId, topic);
 
     var topicPath = topic.split('/'),
-      message;
+      message,
+      messageTypeIndex;
 
     if (!this.isWaitingForMqttClientMessages) {
       return;
@@ -1055,20 +2166,42 @@ module.exports = function () {
       }
       else if (topicPath[0] === 'message'){
 
-        // is message topic publish -t message/<from-device-id>/<to-channel-id>
+        // is message topic publish -t message/<from-device-id>/<to-channel-id>/<mqtt-message-type>
+        messageTypeIndex = messageTypes.indexOf(topicPath[3]);
+
+        if (messageTypeIndex !== -1) {
+          this.emit(
+            '_mqtt-message-' + messageTypes[messageTypeIndex], 
+            topicPath, 
+            message
+          );
+          debug(
+            '%s emitted %s , %s', this.clientId, 
+            topicPath.join('/'), 
+            '_mqtt-message-' + messageTypes[messageTypeIndex]
+            // message
+          );
+        }
+        else {
+          throw(new Error('EMESSAGETYPE'));
+        }
+
         
-        if (message.requestId) {
-          this.handleMessageRequest(topicPath, message);
-        }
-        else if (message.respondsTo) {
-          this.handleMessageResponse(topicPath, message);
-        }
-        // else: ignore
+        // if (message.chunkId) {
+        //   // this is a request message
+
+        //   this.handleRequestMessage(topicPath, message);
+        // }
+        // else if (message.ack) {
+        //   // this is a response message
+        //   this.handleAckMessage(topicPath, message);
+        // }
+        // // else: ignore
       }
 
     }
     catch (e) {
-      // ignore json parse error
+      // ignore errors
       debug(e);
     }
 
@@ -1133,7 +2266,7 @@ module.exports = function () {
           connection.connack = reqMessage.connreq;
 
           // - set channelNonce = randomString()
-          connection.channelNonce = MqttReqRes.randomString(30);
+          connection.channelNonce = MqttReqRes.randomString(CHANNEL_NONCE_LENGTH);
 
           // - set channelSendId = hash(connack, channelNonce, channelNonceA, sharedSecretAB)
           connection.channelSendId = MqttReqRes.hash(
@@ -1288,393 +2421,6 @@ module.exports = function () {
       connack: ackMessage.connack,
       channelNonce: ackMessage.channelNonce,
     });
-
-    return this;
-  };
-
-
-  // ### MqttReqRes.handleMessageRequest(topicPath, requestMessage) 
-  MqttReqRes.prototype.handleMessageRequest = function (topicPath, requestMessage) {
-    
-    debug('%s handleMessageRequest(%s)', this.clientId, topicPath.join('/'));
-
-    var self = this,
-      req,
-      res,
-      clientId,
-      connection,
-      secret;
-
-    if ('function' !== typeof this.fnOnRequest) {
-      // no request handler defined, ignore message request
-      return this;
-    }
-
-    clientId = topicPath[1];
-
-    connection = this.getConnection(clientId);
-
-    if (!MqttReqRes.isConnected(connection)) {
-      // unknown connection, do not respond
-      return this;
-    }
-
-    secret = MqttReqRes.secret(connection);
-
-    req = {
-      topic: topicPath.join('/'),
-      payload: MqttReqRes.decrypt(requestMessage.payload, secret),
-      connection: connection
-    };
-
-    res = {
-      respondsTo: requestMessage.requestId,
-      send: function (payload) {
-        return self.sendResponse(connection, requestMessage.requestId, payload, secret);
-      }
-    };
-
-    // call request handler
-    this.fnOnRequest(req, res);
-
-    return this;
-  };
-
-
-
-  // ### sendResponse(object connection, string respondToRequestId, string|object|ArrayBuffer payload, string secret)
-  MqttReqRes.prototype.sendResponse = function (connection, respondToRequestId, payload, secret) {
-
-    debug('%s sendResponse() respondToRequestId %s', this.clientId, respondToRequestId);
-
-    // ArrayBuffer
-    var self = this,
-      type,
-      offset = 0,
-      payloadLength,
-      chunkno = 0,
-      remainingLength,
-      streamId = MqttReqRes.randomString(),
-      eos = false;
-
-
-    if (payload instanceof ArrayBuffer) {
-      // ArrayBuffer
-      type = 'ArrayBuffer';
-    }
-    else if (payload instanceof Object) {
-      type = 'JSON';
-    }
-    else {
-      type = 'string';
-    }
-    
-    debug('%s sendResponse() type: %s', this.clientId, type);    
-
-    if (type === 'JSON') {
-      // payload as a JSON string
-      payload = JSON.stringify(payload);
-    }
-    else if (type === 'string'){
-      // payload as a string
-      payload = String(payload);      
-    }
-
-    remainingLength = payloadLength = (type === 'ArrayBuffer' ? 
-          payload.byteLength : payload.length);
-
-    function chunkResponse () {
-
-      debug(
-        '%s chunkResponse() chunkno %d remainingLength %d', 
-        self.clientId, chunkno, remainingLength
-      );
-
-      return new Promise (function (resolve, reject) {
-
-        var chunkSize,
-          chunkStr,
-          chunkUint8Array,
-          message;
-
-        chunkSize = remainingLength >= MAX_CHUNK_SIZE ?
-          MAX_CHUNK_SIZE : remainingLength;
-
-        eos = chunkSize === remainingLength;
-
-        if (chunkSize) {
-          if (type === 'ArrayBuffer') {
-            // chunk as Uint8Array
-            // new Uint8Array(buffer [, byteOffset [, length]]);
-            chunkUint8Array = new Uint8Array(payload, offset, chunkSize);
-
-            chunkStr = chunkUint8Array.join(',');
-          }
-          else {
-            chunkStr = payload.substr(offset, chunkSize);
-          }
-        }
-
-        message = JSON.stringify({
-          respondsTo: respondToRequestId,
-          streamId: streamId,
-          data: chunkStr,
-          type: type,
-          chunkno: chunkno,
-          eos: eos
-        });
-
-        self.sendResponseChunk(
-          connection,
-          respondToRequestId,
-          message,
-          secret
-        )
-        .then(function () {
-
-            debug('%s chunkResponse () resolved', self.clientId);
-            
-            offset += chunkSize;
-
-            remainingLength = payloadLength - offset;
-
-            self.emit(
-              '_stream-response-chunk', 
-              {streamId: streamId, eos: eos}
-            );
-          }, reject); 
-      });
-    } // chunkResponse
-
-
-    function waitForResponseChunksDone () {
-
-      debug(
-        '%s waitForResponseChunksDone() streamId %s payloadLength %d', 
-        self.clientId, streamId, payloadLength
-      );
-
-      return new Promise (function (resolve, reject) {
-
-        function onResponseChunk (ev) {
-          if (ev.streamId === streamId) {
-
-            if (ev.eos) {
-              self.removeListener('_stream-response-chunk', onResponseChunk);
-              resolve();
-            }
-            else {
-              // start next chunk request
-              ++chunkno;
-              chunkResponse().catch(reject);            
-            }
-          }
-        }
-        
-        self.on('_stream-response-chunk', onResponseChunk);
-
-        // start first chunk response
-        chunkResponse().catch(reject);
-      });
-    } // waitForResponseChunksDone
-
-    return waitForResponseChunksDone();
-  };
-
-
-  // ### MqttReqRes.sendResponseChunk(object connection, string respondToRequestId, string payload, string secret)
-  MqttReqRes.prototype.sendResponseChunk = function (connection, respondToRequestId, payload, secret) {
-
-    debug('%s sendResponseChunk()', this.clientId);
-
-    var self = this;
-
-    return new Promise (function (resolve, reject) {
-
-      var resMessage = {
-        respondsTo: respondToRequestId
-      };
-
-      try {
-        resMessage.payload = MqttReqRes.encrypt(payload, secret);
-
-        self.mqttClient.publish(        
-          connection.topicSend, 
-          JSON.stringify(resMessage), 
-          {qos: 0}, 
-          function (err) {
-            if (err) {
-              // todo: expose error to this client
-              debug(err);
-              reject(err);
-            }
-            else {
-              resolve();
-            }
-          }
-        );    
-      }
-      catch (e) {
-        // todo: handle/expose error
-        debug(e);
-      }
-    });
-  };
-
-
-
-  // ### onRequest(function onRequestHandler)
-  MqttReqRes.prototype.onRequest = function (onRequestCallback) {
-
-    debug('%s onRequest()', this.clientId);
-
-    var self = this,
-      currentStreams = {};
-
-    function pWaitForEOS (streamId) {
-
-      debug('%s pWaitForEOS(%s)', self.clientId, streamId);
-
-      return new Promise (function (resolve, reject) {
-
-        var result = null,
-          type;
-
-        function onStreamOnRequestChunk (req, res, chunk) {
-
-          try {
-
-          debug(
-            '%s onStreamOnRequestChunk() chunkno %d data.length %d', 
-            self.clientId, chunk.chunkno, chunk.data.length
-          );
-
-          if (chunk.streamId === streamId) {
-
-            if (!type) {
-              type = chunk.type;
-
-              debug(
-                '%s onStreamOnRequestChunk() chunk type is %s', 
-                self.clientId, type
-              );              
-            }
-
-            if (type === 'ArrayBuffer') {
-             
-              if (result === null) {
-                result = [];
-              }
-
-              chunk.data.split(',').forEach(function (byteStr) {
-                result.push(byteStr);
-              });
-            } 
-            else {
-              // assume type string or JSON
-              if (result === null) {
-                result = '';
-              }
-              result += chunk.data;
-            }
-
-            if (chunk.eos) {
-              
-              // end of stream
-
-              self.removeListener('_stream-on-request-chunk', onStreamOnRequestChunk);
-              delete currentStreams[streamId];
-
-              if (type === 'ArrayBuffer') {
-                req.payload = Uint8Array.from(result).buffer;
-              }
-              else if (type === 'Object') {
-                req.payload = JSON.parse(result);
-              }
-              else {
-                req.payload = result;
-              }
-
-              req.type = type;
-
-              resolve([req, res]);
-            }
-            else {
-              // respond chunk ack
-              res.send({
-                streamId: streamId,
-                chunkno: chunk.chunkno
-              });
-            }
-          }
-
-          }
-          catch (e) {
-            debug(e);
-            reject(e);     
-          }
-
-        } // onStreamOnRequestChunk
-
-        self.on('_stream-on-request-chunk', onStreamOnRequestChunk);
-      });
-    }
-
-
-    function onStreamRequest (req, res) {
-
-      debug('%s onStreamRequest()', self.clientId);
-
-      var streamMessage;
-
-      try {
-        streamMessage = JSON.parse(req.payload);
-
-        if (!streamMessage ||
-          !streamMessage.streamId) {
-          return;
-        }
-
-        if (!currentStreams[streamMessage.streamId]) {
-          // new stream
-          currentStreams[streamMessage.streamId] = pWaitForEOS(streamMessage.streamId)
-            .then(function (result) {
-              onRequestCallback.apply(self, result);
-            });
-        }
-
-        self.emit('_stream-on-request-chunk', req, res, streamMessage);
-
-      }
-      catch (e) {
-        return;
-      }
-    } // onStreamRequest
-
-
-    this.fnOnRequest = onStreamRequest; 
-    
-    return this;
-  };
-
-
-  // ### MqttReqRes.handleMessageResponse(Array topicPath, responseMessage) 
-  MqttReqRes.prototype.handleMessageResponse = function (topicPath, responseMessage) {
-
-    debug('%s handleMessageResponse(%s)', this.clientId, topicPath.join('/'));
-
-    var clientId,
-      connection;
-
-    clientId = topicPath[1];
-    connection = this.getConnection(clientId);
-
-    if (!MqttReqRes.isConnected(connection)) {
-      // unknown connection, do not respond
-      return;
-    }
-
-    this.emit('_response', responseMessage);
 
     return this;
   };
@@ -4373,7 +5119,7 @@ Duplexify.prototype._forward = function() {
 
   var data
 
-  while ((data = shift(this._readable2)) !== null) {
+  while (this._drained && (data = shift(this._readable2)) !== null) {
     if (this.destroyed) continue
     this._drained = this.push(data)
   }
