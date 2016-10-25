@@ -20,13 +20,14 @@
   brokerPort: 9999,
   clientId: &#39;client-a&#39;
 })</code></pre>
-<h3 id="requesttoclientid-payload">request(toClientId[, payload])</h3>
+<h3 id="requesttoclientid-payload-meta">request(toClientId[, payload, meta])</h3>
 <p>send a request to an other client.</p>
 <p><strong>toClientId</strong> string, required. the receiver&#39;s client id</p>
 <p><strong>payload</strong> string|object|ArrayBuffer, optional. the message string or object to be sent.</p>
+<p><strong>meta</strong> object, optional. an object to be sent additionaly.</p>
 <p><strong>returns</strong> Promise which resolves to object <code>response</code></p>
 <p>Example:</p>
-<pre><code>client.request(&#39;client-b&#39;, &#39;hello!&#39;)
+<pre><code>clientA.request(&#39;client-b&#39;, &#39;hello!&#39;, {foo: &#39;bar&#39;})
   .then(function (response) {
 
     /* called when received response 
@@ -42,10 +43,10 @@
 <p>defines a request handler callback function. The handler function is called internally on each request received from connected client.</p>
 <p><strong>callback</strong> function required; callback takes these arguments:</p>
 <ul>
-<li>object <strong>req</strong> the request object with properties object <code>connection</code>, string <code>topic</code>, string <code>type</code> and string|object|ArrayBuffer <code>payload</code></li>
+<li>object <strong>req</strong> the request object with properties object <code>connection</code>, string <code>topic</code>, string <code>type</code>, string|object|ArrayBuffer <code>payload</code> and object <code>meta</code></li>
 <li>object <strong>res</strong> the response object with function <code>send()</code></li>
 </ul>
-<p>use <code>res.send(message)</code> to respond to the request with string|object <code>message</code>.</p>
+<p>use <code>res.send(message, meta)</code> to respond to the request with string|object <code>message</code> and optional meta data object.</p>
 <p>Examples:</p>
 <p>respond with string &quot;foo&quot;:</p>
 <pre><code>clientB.onRequest(function (req, res) {
@@ -57,7 +58,7 @@
   req.topic -&gt; string mqtt topic
   */
 
-  res.send(&#39;foo&#39;);
+  res.send(&#39;foo&#39;, {bar: &#39;baz&#39;});
 });</code></pre>
 <p>respond with object</p>
 <pre><code>clientB.onRequest(function (req, res) {

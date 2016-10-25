@@ -34,7 +34,7 @@ var client = new MqttReqRes({
 ```
 
 
-### request(toClientId[, payload])
+### request(toClientId[, payload, meta])
 
 send a request to an other client.
 
@@ -42,13 +42,15 @@ send a request to an other client.
 
 **payload** string|object|ArrayBuffer, optional. the message string or object to be sent.
 
+**meta** object, optional. an object to be sent additionaly.
+
 **returns** Promise which resolves to object `response`
 
 
 Example:
 
 ```
-client.request('client-b', 'hello!')
+clientA.request('client-b', 'hello!', {foo: 'bar'})
   .then(function (response) {
 
     /* called when received response 
@@ -69,10 +71,10 @@ defines a request handler callback function. The handler function is called inte
 
 **callback** function required; callback takes these arguments:
 
-- object **req** the request object with properties object `connection`, string `topic`, string `type` and string|object|ArrayBuffer `payload`
+- object **req** the request object with properties object `connection`, string `topic`, string `type`, string|object|ArrayBuffer `payload` and object `meta`
 - object **res** the response object with function `send()`
 
-use `res.send(message)` to respond to the request with string|object `message`.
+use `res.send(message, meta)` to respond to the request with string|object `message` and optional meta data object.
 
 Examples:
 
@@ -88,7 +90,7 @@ clientB.onRequest(function (req, res) {
   req.topic -> string mqtt topic
   */
 
-  res.send('foo');
+  res.send('foo', {bar: 'baz'});
 });
 
 ```
