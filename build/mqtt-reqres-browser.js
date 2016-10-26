@@ -320,6 +320,9 @@ module.exports = function () {
   MqttReqRes.prototype = Object.create(EventEmitter.prototype);
   MqttReqRes.prototype.constructor = MqttReqRes;  
 
+  // expose EventEmitter
+  MqttReqRes.EventEmitter = EventEmitter;
+
 
   // ### MqttReqRes.randomString(length) 
   MqttReqRes.randomString = function (length) {
