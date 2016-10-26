@@ -1,8 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><title>clientSpec</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content=""><meta name="groc-document-path" content="clientSpec"><meta name="groc-project-path" content="test/clientSpec.js"><link rel="stylesheet" type="text/css" media="all" href="assets/style.css"><script type="text/javascript" src="assets/behavior.js"></script><body><div id="meta"><div class="file-path">test/clientSpec.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h2 id="clientspec">clientSpec</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> debug = <span class="hljs-built_in">require</span>(<span class="hljs-string">'debug'</span>)(<span class="hljs-string">'clientSpec'</span>);
 <span class="hljs-keyword">const</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'chai'</span>).assert;
-<span class="hljs-keyword">const</span> fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'fs'</span>);
-<span class="hljs-keyword">const</span> os = <span class="hljs-built_in">require</span>(<span class="hljs-string">'os'</span>);
-<span class="hljs-keyword">const</span> Broker = <span class="hljs-built_in">require</span>(<span class="hljs-string">'mqtt-reqres-broker'</span>);
+<span class="hljs-keyword">const</span> fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'fs'</span>);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>const os = require(&#39;os&#39;);</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> Broker = <span class="hljs-built_in">require</span>(<span class="hljs-string">'mqtt-reqres-broker'</span>);
 <span class="hljs-keyword">const</span> Client = <span class="hljs-built_in">require</span>(<span class="hljs-string">'../lib/mqtt-reqres.js'</span>);
 
 <span class="hljs-keyword">const</span> serverOptions = {
@@ -374,6 +372,39 @@ assert.deepEqual(
   });
 
 
+  it(<span class="hljs-string">'should request with payload null and meta data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
+
+    clientA = newClient(clientAId);
+
+    clientA.sharedSecret(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">clientId, callback</span>) </span>{
+      callback(sharedSecret);
+    });
+
+    clientB = newClient(clientBId);
+
+    clientB.sharedSecret(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">clientId, callback</span>) </span>{
+      callback(sharedSecret);
+    });</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>define request handler</p></div></div><div class="code"><div class="wrapper">    clientB.onRequest(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">req, res</span>) </span>{
+      <span class="hljs-keyword">try</span> {
+        debug(<span class="hljs-string">'ClientB.on request'</span>, req.payload);
+        assert.isNull(req.payload);
+        assert.deepEqual(req.meta, {foo: <span class="hljs-string">'bar'</span>});
+        res.send(<span class="hljs-string">'nil'</span>);
+        closeClients(clientA, clientB).then(() =&gt; done());
+      }
+      <span class="hljs-keyword">catch</span>(e) {
+        done(e);
+      }
+    });
+
+
+    clientB.connect()     
+      .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>request with meta data</p></div></div><div class="code"><div class="wrapper">        <span class="hljs-keyword">return</span> clientA.request(clientBId, <span class="hljs-literal">null</span>, {foo: <span class="hljs-string">'bar'</span>});
+      })
+      .catch(pcatch);    
+  });
+
+
   it(<span class="hljs-string">'should respond with meta data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
 
     clientA = newClient(clientAId);
@@ -398,6 +429,37 @@ assert.deepEqual(
         
         assert.deepEqual(res.meta, {foo: <span class="hljs-string">'bar'</span>});
         assert.strictEqual(res.payload, <span class="hljs-string">''</span>);
+        
+        closeClients(clientA, clientB).then(() =&gt; done());
+      })
+      .catch(pcatch);    
+  });
+
+
+  it(<span class="hljs-string">'should respond with payload null and meta data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
+
+    clientA = newClient(clientAId);
+
+    clientA.sharedSecret(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">clientId, callback</span>) </span>{
+      callback(sharedSecret);
+    });
+
+    clientB = newClient(clientBId);
+
+    clientB.sharedSecret(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">clientId, callback</span>) </span>{
+      callback(sharedSecret);
+    });</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>define request handler</p></div></div><div class="code"><div class="wrapper">    clientB.onRequest(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">req, res</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>respond with meta data</p></div></div><div class="code"><div class="wrapper">      res.send(<span class="hljs-literal">null</span>, {foo: <span class="hljs-string">'bar'</span>});
+    });
+
+
+    clientB.connect()     
+      .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+        <span class="hljs-keyword">return</span> clientA.request(clientBId, <span class="hljs-string">'hello'</span>);
+      })
+      .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">res</span>) </span>{
+        
+        assert.isNull(res.payload);
+        assert.deepEqual(res.meta, {foo: <span class="hljs-string">'bar'</span>});
         
         closeClients(clientA, clientB).then(() =&gt; done());
       })

@@ -514,6 +514,9 @@ module.exports = function () {
       // ArrayBuffer
       type = 'ArrayBuffer';
     }
+    else if (payload === null) {
+      type = 'null';
+    }
     else if (payload instanceof Object) {
       type = 'JSON';
     }
@@ -531,6 +534,9 @@ module.exports = function () {
     else if (type === 'string'){
       // payload as a string
       payload = String(payload);      
+    }
+    else if (type === 'null') {
+      payload = 'null';
     }
 
     payloadLength = (type === 'ArrayBuffer' ? 
@@ -1071,6 +1077,9 @@ module.exports = function () {
           }
           else if (type === 'JSON') {
             streamResult = JSON.parse(streamResult);
+          }
+          else if (type === 'null') {
+            streamResult = null;
           }
           
           return Promise.resolve(streamResult);

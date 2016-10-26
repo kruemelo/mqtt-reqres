@@ -259,6 +259,9 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
     
     <span class="hljs-keyword">if</span> (payload <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">ArrayBuffer</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>ArrayBuffer</p></div></div><div class="code"><div class="wrapper">      type = <span class="hljs-string">'ArrayBuffer'</span>;
     }
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (payload === <span class="hljs-literal">null</span>) {
+      type = <span class="hljs-string">'null'</span>;
+    }
     <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (payload <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">Object</span>) {
       type = <span class="hljs-string">'JSON'</span>;
     }
@@ -270,6 +273,9 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
     <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'JSON'</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>payload as a JSON string</p></div></div><div class="code"><div class="wrapper">      payload = <span class="hljs-built_in">JSON</span>.stringify(payload);
     }
     <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'string'</span>){</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>payload as a string</p></div></div><div class="code"><div class="wrapper">      payload = <span class="hljs-built_in">String</span>(payload);      
+    }
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'null'</span>) {
+      payload = <span class="hljs-string">'null'</span>;
     }
 
     payloadLength = (type === <span class="hljs-string">'ArrayBuffer'</span> ? 
@@ -711,6 +717,9 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
           }
           <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'JSON'</span>) {
             streamResult = <span class="hljs-built_in">JSON</span>.parse(streamResult);
+          }
+          <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'null'</span>) {
+            streamResult = <span class="hljs-literal">null</span>;
           }
           
           <span class="hljs-keyword">return</span> <span class="hljs-built_in">Promise</span>.resolve(streamResult);

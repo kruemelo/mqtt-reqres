@@ -1,6 +1,6 @@
 {
   "name": "mqtt-reqres",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "mqtt request/response client",
   "main": "./lib/mqtt-reqres.js",
   "scripts": {

@@ -4,7 +4,7 @@
 const debug = require('debug')('clientSpec');
 const assert = require('chai').assert;
 const fs = require('fs');
-const os = require('os');
+// const os = require('os');
 const Broker = require('mqtt-reqres-broker');
 const Client = require('../lib/mqtt-reqres.js');
 
@@ -413,6 +413,45 @@ describe('MqttReqResClient', () => {
   });
 
 
+  it('should request with payload null and meta data', function (done) {
+
+    clientA = newClient(clientAId);
+
+    clientA.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    clientB = newClient(clientBId);
+
+    clientB.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    // define request handler
+    clientB.onRequest(function (req, res) {
+      try {
+        debug('ClientB.on request', req.payload);
+        assert.isNull(req.payload);
+        assert.deepEqual(req.meta, {foo: 'bar'});
+        res.send('nil');
+        closeClients(clientA, clientB).then(() => done());
+      }
+      catch(e) {
+        done(e);
+      }
+    });
+
+
+    clientB.connect()     
+      .then(function() {
+
+        // request with meta data
+        return clientA.request(clientBId, null, {foo: 'bar'});
+      })
+      .catch(pcatch);    
+  });
+
+
   it('should respond with meta data', function (done) {
 
     clientA = newClient(clientAId);
@@ -443,6 +482,43 @@ describe('MqttReqResClient', () => {
         
         assert.deepEqual(res.meta, {foo: 'bar'});
         assert.strictEqual(res.payload, '');
+        
+        closeClients(clientA, clientB).then(() => done());
+      })
+      .catch(pcatch);    
+  });
+
+
+  it('should respond with payload null and meta data', function (done) {
+
+    clientA = newClient(clientAId);
+
+    clientA.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    clientB = newClient(clientBId);
+
+    clientB.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    // define request handler
+    clientB.onRequest(function (req, res) {
+
+      // respond with meta data
+      res.send(null, {foo: 'bar'});
+    });
+
+
+    clientB.connect()     
+      .then(function () {
+        return clientA.request(clientBId, 'hello');
+      })
+      .then(function (res) {
+        
+        assert.isNull(res.payload);
+        assert.deepEqual(res.meta, {foo: 'bar'});
         
         closeClients(clientA, clientB).then(() => done());
       })
