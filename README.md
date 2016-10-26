@@ -258,7 +258,7 @@ $ npm test
 // or
 $ npm run test:debug
 ```
-you may also open `test/index.html` in browser to play around with a client live frontend - this requires to have a websocket mqtt broker running:
+you may also open `test/index.html` in browser to play around with a client live frontend - this requires to have a websocket mqtt broker running ([mqtt-reqres-broker](https://github.com/kruemelo/mqtt-reqres-broker)):
 
 ```
 $ npm run broker

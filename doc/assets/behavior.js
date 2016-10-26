@@ -17,159 +17,9 @@ f.event={add:function(a,c,d,e,g){var h,i,j,k,l,m,n,o,p,q,r,s;if(!(a.nodeType===3
         "projectPath": "README.md",
         "targetPath": "index",
         "pageTitle": "index",
-        "firstHeader": {
-          "type": "heading",
-          "data": {
-            "level": 1,
-            "title": "mqtt-reqres",
-            "slug": "mqtt-reqres",
-            "isFileHeader": true
-          },
-          "depth": 1
-        },
-        "title": "mqtt-reqres"
+        "title": "index"
       },
-      "depth": 1,
-      "outline": [
-        {
-          "type": "heading",
-          "data": {
-            "level": 1,
-            "title": "API",
-            "slug": "api"
-          },
-          "depth": 1,
-          "children": [
-            {
-              "type": "heading",
-              "data": {
-                "level": 2,
-                "title": "Methods",
-                "slug": "methods"
-              },
-              "depth": 2,
-              "children": [
-                {
-                  "type": "heading",
-                  "data": {
-                    "level": 3,
-                    "title": "MqttReqRes([options])",
-                    "slug": "mqttreqresoptions"
-                  },
-                  "depth": 3
-                }, {
-                  "type": "heading",
-                  "data": {
-                    "level": 3,
-                    "title": "request(toClientId[, payload, meta])",
-                    "slug": "requesttoclientid-payload-meta"
-                  },
-                  "depth": 3
-                }, {
-                  "type": "heading",
-                  "data": {
-                    "level": 3,
-                    "title": "onRequest(callback)",
-                    "slug": "onrequestcallback"
-                  },
-                  "depth": 3
-                }, {
-                  "type": "heading",
-                  "data": {
-                    "level": 3,
-                    "title": "sharedSecret(callback)",
-                    "slug": "sharedsecretcallback"
-                  },
-                  "depth": 3
-                }, {
-                  "type": "heading",
-                  "data": {
-                    "level": 3,
-                    "title": "connect([toClientId[, sharedSecret]])",
-                    "slug": "connecttoclientid-sharedsecret"
-                  },
-                  "depth": 3
-                }, {
-                  "type": "heading",
-                  "data": {
-                    "level": 3,
-                    "title": "disconnect([fromClientId])",
-                    "slug": "disconnectfromclientid"
-                  },
-                  "depth": 3
-                }
-              ]
-            }, {
-              "type": "heading",
-              "data": {
-                "level": 2,
-                "title": "Events",
-                "slug": "events"
-              },
-              "depth": 2,
-              "children": [
-                {
-                  "type": "heading",
-                  "data": {
-                    "level": 3,
-                    "title": "broker-connect",
-                    "slug": "broker-connect"
-                  },
-                  "depth": 3
-                }, {
-                  "type": "heading",
-                  "data": {
-                    "level": 3,
-                    "title": "client-connect",
-                    "slug": "client-connect"
-                  },
-                  "depth": 3
-                }
-              ]
-            }, {
-              "type": "heading",
-              "data": {
-                "level": 2,
-                "title": "include client into web page",
-                "slug": "include-client-into-web-page"
-              },
-              "depth": 2
-            }, {
-              "type": "heading",
-              "data": {
-                "level": 2,
-                "title": "use the client as a module",
-                "slug": "use-the-client-as-a-module"
-              },
-              "depth": 2
-            }, {
-              "type": "heading",
-              "data": {
-                "level": 2,
-                "title": "test",
-                "slug": "test"
-              },
-              "depth": 2
-            }, {
-              "type": "heading",
-              "data": {
-                "level": 2,
-                "title": "other tasks",
-                "slug": "other-tasks"
-              },
-              "depth": 2
-            }, {
-              "type": "heading",
-              "data": {
-                "level": 2,
-                "title": "build docs",
-                "slug": "build-docs"
-              },
-              "depth": 2
-            }
-          ]
-        }
-      ]
+      "depth": 1
     }, {
       "type": "file",
       "data": {
@@ -244,7 +94,348 @@ f.event={add:function(a,c,d,e,g){var h,i,j,k,l,m,n,o,p,q,r,s;if(!(a.nodeType===3
             "pageTitle": "lib/mqtt-reqres",
             "title": "mqtt-reqres"
           },
-          "depth": 2
+          "depth": 2,
+          "outline": [
+            {
+              "type": "heading",
+              "data": {
+                "level": 2,
+                "title": "MqttReqRes",
+                "slug": "mqttreqres"
+              },
+              "depth": 2,
+              "children": [
+                {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "export module",
+                    "slug": "export-module"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "dependencies",
+                    "slug": "dependencies"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "class MqttReqRes",
+                    "slug": "class-mqttreqres"
+                  },
+                  "depth": 3,
+                  "children": [
+                    {
+                      "type": "heading",
+                      "data": {
+                        "level": 4,
+                        "title": "constructor(options)",
+                        "slug": "constructoroptions"
+                      },
+                      "depth": 4
+                    }
+                  ]
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.randomString(length)",
+                    "slug": "mqttreqresrandomstringlength"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.hash()",
+                    "slug": "mqttreqreshash"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.encrypt(message, secret)",
+                    "slug": "mqttreqresencryptmessage-secret"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.decrypt(encrypted, secret)",
+                    "slug": "mqttreqresdecryptencrypted-secret"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.secret(connection)",
+                    "slug": "mqttreqressecretconnection"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.isConnected(connection)",
+                    "slug": "mqttreqresisconnectedconnection"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.initialize(options)",
+                    "slug": "mqttreqresinitializeoptions"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.getConnection(clientId, forceGet)",
+                    "slug": "mqttreqresgetconnectionclientid-forceget"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.getConnected()",
+                    "slug": "mqttreqresgetconnected"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "streamSend (connection, messageId, msgTargetProperty, payload)",
+                    "slug": "streamsend-connection-messageid-msgtargetproperty-payload"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "streamSendChunk (connection, streamId, messageChunkStr)",
+                    "slug": "streamsendchunk-connection-streamid-messagechunkstr"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "waitForAck (ackMessageName, toId, [timeout=5000])",
+                    "slug": "waitforack-ackmessagename-toid-timeout5000"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "publish",
+                    "slug": "publish"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "request(string toClientId, string|object|ArrayBuffer payload, object meta)",
+                    "slug": "requeststring-toclientid-stringobjectarraybuffer-payload-object-meta"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "waitForResponse(connection, toMessageId)",
+                    "slug": "waitforresponseconnection-tomessageid"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "onRequest(function onRequestHandler)",
+                    "slug": "onrequestfunction-onrequesthandler"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.handleRequestMessage(topicPath, requestMessage)",
+                    "slug": "mqttreqreshandlerequestmessagetopicpath-requestmessage"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "sendResponse(object connection, string respondToRequestId, string|object|ArrayBuffer payload, object meta)",
+                    "slug": "sendresponseobject-connection-string-respondtorequestid-stringobjectarraybuffer-payload-object-meta"
+                  },
+                  "depth": 3,
+                  "children": [
+                    {
+                      "type": "heading",
+                      "data": {
+                        "level": 4,
+                        "title": "connect([toClientId, sharedSecret])",
+                        "slug": "connecttoclientid-sharedsecret"
+                      },
+                      "depth": 4
+                    }, {
+                      "type": "heading",
+                      "data": {
+                        "level": 4,
+                        "title": "connectToBroker()",
+                        "slug": "connecttobroker"
+                      },
+                      "depth": 4
+                    }, {
+                      "type": "heading",
+                      "data": {
+                        "level": 4,
+                        "title": "subscribeConnect()",
+                        "slug": "subscribeconnect"
+                      },
+                      "depth": 4
+                    }
+                  ]
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "connectToClient (toClientId[, sharedSecret])",
+                    "slug": "connecttoclient-toclientid-sharedsecret"
+                  },
+                  "depth": 3,
+                  "children": [
+                    {
+                      "type": "heading",
+                      "data": {
+                        "level": 4,
+                        "title": "waitForMqttClientMessages()",
+                        "slug": "waitformqttclientmessages"
+                      },
+                      "depth": 4
+                    }
+                  ]
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.handleMqttClientMessage(topic, mqttMessage)",
+                    "slug": "mqttreqreshandlemqttclientmessagetopic-mqttmessage"
+                  },
+                  "depth": 3,
+                  "children": [
+                    {
+                      "type": "heading",
+                      "data": {
+                        "level": 4,
+                        "title": "handleConnectRequest",
+                        "slug": "handleconnectrequest"
+                      },
+                      "depth": 4
+                    }
+                  ]
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.sharedSecret(fnGetSharedSecret)",
+                    "slug": "mqttreqressharedsecretfngetsharedsecret"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.getSharedSecret(connection)",
+                    "slug": "mqttreqresgetsharedsecretconnection"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.publishConnectAck(clientId)",
+                    "slug": "mqttreqrespublishconnectackclientid"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.handleConnectAck(topicPath, ackMessage)",
+                    "slug": "mqttreqreshandleconnectacktopicpath-ackmessage"
+                  },
+                  "depth": 3,
+                  "children": [
+                    {
+                      "type": "heading",
+                      "data": {
+                        "level": 4,
+                        "title": "subscribeReceiveChannel(clientId)",
+                        "slug": "subscribereceivechannelclientid"
+                      },
+                      "depth": 4
+                    }, {
+                      "type": "heading",
+                      "data": {
+                        "level": 4,
+                        "title": "publishConnectRequest()",
+                        "slug": "publishconnectrequest"
+                      },
+                      "depth": 4
+                    }, {
+                      "type": "heading",
+                      "data": {
+                        "level": 4,
+                        "title": "disconnect a client or from broker if clientId is omitted",
+                        "slug": "disconnect-a-client-or-from-broker-if-clientid-is-omitted"
+                      },
+                      "depth": 4
+                    }
+                  ]
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.disconnectClient(connection)",
+                    "slug": "mqttreqresdisconnectclientconnection"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.disconnectBroker()",
+                    "slug": "mqttreqresdisconnectbroker"
+                  },
+                  "depth": 3
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 3,
+                    "title": "MqttReqRes.close(callback)",
+                    "slug": "mqttreqresclosecallback"
+                  },
+                  "depth": 3
+                }
+              ]
+            }
+          ]
         }
       ]
     }, {

@@ -217,9 +217,8 @@
     messageTypes.forEach(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">messageType</span>) </span>{
      self.removeAllListeners(<span class="hljs-string">'_mqtt-message-'</span> + messageType);
     });
-    </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>this.removeAllListeners(&#39;_stream-request-chunk&#39;);
-this.removeAllListeners(&#39;_stream-on-request-chunk&#39;);
-this.removeAllListeners(&#39;_stream-response-chunk&#39;);</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">this</span>.mqttClient = <span class="hljs-literal">null</span>;
+    
+    <span class="hljs-keyword">this</span>.mqttClient = <span class="hljs-literal">null</span>;
 
     <span class="hljs-keyword">this</span>.brokerProtocol = options.brokerProtocol || <span class="hljs-string">'mqtt'</span>;
     <span class="hljs-keyword">this</span>.brokerHostname = options.brokerHostname || <span class="hljs-string">'localhost'</span>;
@@ -250,14 +249,10 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
       <span class="hljs-keyword">return</span> MqttReqRes.isConnected(connection);
     });
   };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="streamsend-connection-messageid-msgtargetproperty-payload">streamSend (connection, messageId, msgTargetProperty, payload)</h3>
-<p>send a string|object|ArrayBuffer payload within an existing message</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype.streamSend = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, messageId, msgTargetProperty, payload</span>) </span>{
-
-    debug(
-      <span class="hljs-string">'%s streamSend(%s, %s, %s)'</span>, 
-      <span class="hljs-keyword">this</span>.clientId, connection.clientId, messageId, msgTargetProperty, payload
-    );
-
-    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
+<p>send a string|object|ArrayBuffer payload within an existing message</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype.streamSend = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, messageId, msgTargetProperty, payload</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(
+  &#39;%s streamSend(%s, %s, %s)&#39;, 
+  this.clientId, connection.clientId, messageId, msgTargetProperty, payload
+);</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
       type,
       payloadLength,
       streamId = MqttReqRes.randomString(STREAM_ID_LENGTH);
@@ -278,11 +273,7 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
     }
 
     payloadLength = (type === <span class="hljs-string">'ArrayBuffer'</span> ? 
-      payload.byteLength : payload.length);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>_mqtt-message-stream: message-id, stream-id, message-target-property</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sendStreamMessage</span> (<span class="hljs-params"></span>) </span>{
-
-      debug(<span class="hljs-string">'%s sendStreamMessage() to %s'</span>, self.clientId, connection.clientId);
-
-      <span class="hljs-keyword">try</span> {
+      payload.byteLength : payload.length);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>_mqtt-message-stream: message-id, stream-id, message-target-property</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sendStreamMessage</span> (<span class="hljs-params"></span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s sendStreamMessage() to %s&#39;, self.clientId, connection.clientId);</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">try</span> {
         <span class="hljs-keyword">return</span> self.mqttPublish(connection, <span class="hljs-string">'stream'</span>, <span class="hljs-built_in">JSON</span>.stringify({
           messageId: messageId,
           streamId: streamId,
@@ -320,17 +311,13 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
           chunkSize = remainingLength &gt;= MAX_CHUNK_SIZE ?
             MAX_CHUNK_SIZE : remainingLength;
 
-          eos = chunkSize === remainingLength;
-
-          debug(<span class="hljs-string">'%s sendChunks().nextChunk(): payloadLength %d remainingLength %d chunkno %d chunkSize %d eos %s'</span>,
-            self.clientId, payloadLength,
-            remainingLength,
-            chunkno,
-            chunkSize,
-            eos
-          );
-
-          <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'ArrayBuffer'</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>chunk as Uint8Array
+          eos = chunkSize === remainingLength;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s sendChunks().nextChunk(): payloadLength %d remainingLength %d chunkno %d chunkSize %d eos %s&#39;,
+  self.clientId, payloadLength,
+  remainingLength,
+  chunkno,
+  chunkSize,
+  eos
+);</p></div></div><div class="code"><div class="wrapper">          <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'ArrayBuffer'</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>chunk as Uint8Array
 new Uint8Array(buffer [, byteOffset [, length]]);</p></div></div><div class="code"><div class="wrapper">            chunkUint8Array = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Uint8Array</span>(payload, offset, chunkSize);
 
             chunkStr = chunkUint8Array.join(<span class="hljs-string">','</span>);
@@ -374,10 +361,7 @@ new Uint8Array(buffer [, byteOffset [, length]]);</p></div></div><div class="cod
 
         nextChunk();
       });
-    }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>_mqtt-message-stream-end: message-id, stream-id</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sendStreamEndMessage</span> (<span class="hljs-params"></span>) </span>{
-      debug(<span class="hljs-string">'%s sendStreamEndMessage() to %s'</span>, self.clientId, connection.clientId);
-
-      <span class="hljs-keyword">try</span> {
+    }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>_mqtt-message-stream-end: message-id, stream-id</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sendStreamEndMessage</span> (<span class="hljs-params"></span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s sendStreamEndMessage() to %s&#39;, self.clientId, connection.clientId);</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">try</span> {
         <span class="hljs-keyword">return</span> self.mqttPublish(connection, <span class="hljs-string">'stream-end'</span>, <span class="hljs-built_in">JSON</span>.stringify({
           messageId: messageId,
           streamId: streamId
@@ -406,10 +390,7 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
   this.clientId, connection.clientId,
   messageChunkStr,
   connection
-);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>-mqtt-message-chunk: stream-id chunk-id payload</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">publishChunk</span> (<span class="hljs-params"></span>) </span>{
-
-      debug(<span class="hljs-string">'%s publishChunk() to %s'</span>, self.clientId, connection.clientId);
-      <span class="hljs-keyword">try</span> {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>build message object</p></div></div><div class="code"><div class="wrapper">        req = {
+);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>-mqtt-message-chunk: stream-id chunk-id payload</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">publishChunk</span> (<span class="hljs-params"></span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s publishChunk() to %s&#39;, self.clientId, connection.clientId);</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">try</span> {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>build message object</p></div></div><div class="code"><div class="wrapper">        req = {
           streamId: streamId,</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>chunk id</p></div></div><div class="code"><div class="wrapper">          chunkId: chunkId,
           payload: MqttReqRes.encrypt(messageChunkStr, connection.sharedSecret) 
         };
@@ -430,14 +411,10 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
   };
 
 
-  MqttReqRes.prototype.sendAck = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, ackMessageName, toId</span>) </span>{
-
-    debug(
-      <span class="hljs-string">'%s sendAck(%s, %s, toId %s)'</span>, <span class="hljs-keyword">this</span>.clientId,
-      connection.clientId, ackMessageName, toId
-    );
-
-    <span class="hljs-keyword">try</span> {
+  MqttReqRes.prototype.sendAck = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, ackMessageName, toId</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(
+  &#39;%s sendAck(%s, %s, toId %s)&#39;, this.clientId,
+  connection.clientId, ackMessageName, toId
+);</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">try</span> {
       <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.mqttPublish(connection, ackMessageName, <span class="hljs-built_in">JSON</span>.stringify({
         toId: toId
       }));
@@ -471,8 +448,7 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
 
         <span class="hljs-keyword">var</span> acked = <span class="hljs-literal">false</span>;
 
-        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">handleAck</span> (<span class="hljs-params">topicPath, ackMessage</span>) </span>{
-          debug(<span class="hljs-string">'%s handleAck(%s), waits for: "%s"'</span>, self.clientId, ackMessage.toId, ackEventName);
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">handleAck</span> (<span class="hljs-params">topicPath, ackMessage</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s handleAck(%s), waits for: &quot;%s&quot;&#39;, self.clientId, ackMessage.toId, ackEventName);</p></div></div><div class="code"><div class="wrapper">          
           <span class="hljs-keyword">if</span> (ackMessage.toId === toId) {
             acked = <span class="hljs-literal">true</span>;
             self.removeListener(ackEventName, handleAck);
@@ -488,13 +464,11 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
         }, timeout);     
     });
   };  <span class="hljs-comment">// waitForAck</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="publish">publish</h3>
-<p>generic mqtt publish</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype.mqttPublish = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, subTopic, messageStr</span>) </span>{
-
-    debug(
-      <span class="hljs-string">'%s mqttPublish(%s, %s)'</span>, <span class="hljs-keyword">this</span>.clientId,
-      connection.clientId, subTopic</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>, messageStr</p></div></div><div class="code"><div class="wrapper">    );
-
-    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>;
+<p>generic mqtt publish</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype.mqttPublish = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, subTopic, messageStr</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(
+  &#39;%s mqttPublish(%s, %s)&#39;, this.clientId,
+  connection.clientId, subTopic
+  // , messageStr
+);</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>;
 
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
       <span class="hljs-keyword">try</span> {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>pubish message</p></div></div><div class="code"><div class="wrapper">        self.mqttClient.publish(        
@@ -532,7 +506,9 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
 
         <span class="hljs-keyword">if</span> (!connection) {
           <span class="hljs-keyword">return</span> <span class="hljs-built_in">Promise</span>.reject(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'ECLIENTCONNECTION'</span>));
-        }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>secret = this.getSharedSecret(connection);</p></div></div><div class="code"><div class="wrapper">        <span class="hljs-keyword">return</span> self.mqttPublish(connection, <span class="hljs-string">'request'</span>, <span class="hljs-built_in">JSON</span>.stringify({
+        }
+
+        <span class="hljs-keyword">return</span> self.mqttPublish(connection, <span class="hljs-string">'request'</span>, <span class="hljs-built_in">JSON</span>.stringify({
           messageId: messageId
         }));
       })
@@ -558,10 +534,7 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
       });
   };  <span class="hljs-comment">// request</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="waitforresponseconnection-tomessageid">waitForResponse(connection, toMessageId)</h3>
 <p>A: response-ack</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype.waitForResponse = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, toMessageId</span>) </span>{
-  
-    debug(<span class="hljs-string">'%s waitForResponse(toMessageId %s)'</span>, <span class="hljs-keyword">this</span>.clientId, toMessageId);
-
-    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
+  </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s waitForResponse(toMessageId %s)&#39;, this.clientId, toMessageId);</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
       responseMessageId,
       response = {
         errors: []
@@ -758,10 +731,7 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
     
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>;
   };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqreshandlerequestmessagetopicpath-requestmessage">MqttReqRes.handleRequestMessage(topicPath, requestMessage)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.handleRequestMessage = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">topicPath, requestMessage</span>) </span>{
-    
-    debug(<span class="hljs-string">'%s handleRequestMessage(%s)'</span>, <span class="hljs-keyword">this</span>.clientId, topicPath.join(<span class="hljs-string">'/'</span>));
-
-    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
+    </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s handleRequestMessage(%s)&#39;, this.clientId, topicPath.join(&#39;/&#39;));</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
       fromClientId,
       connection,
       secret,
@@ -776,7 +746,6 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
       <span class="hljs-keyword">if</span> (mqttStreamMessage.messageId !== requestMessageId) {
         <span class="hljs-keyword">return</span>;
       }
-
 
       self.receiveStream(connection, mqttStreamMessage)
         .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">streamResult</span>) </span>{
@@ -871,7 +840,6 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
 
     debug(<span class="hljs-string">'%s sendResponse(%s, %s)'</span>, <span class="hljs-keyword">this</span>.clientId, connection.clientId, respondToRequestId);
 
-
     <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
       messageId = MqttReqRes.randomString(MESSAGE_ID_LENGTH);
 
@@ -899,264 +867,7 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
       .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
         <span class="hljs-keyword">return</span> self.waitForAck(<span class="hljs-string">'response-end-ack'</span>, messageId);
       });
-  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>// ### MqttReqRes.requestChunk(toClientId, messageChunkStr) 
-MqttReqRes.prototype.requestChunk = function (toClientId, messageChunkStr) {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  debug(&#39;%s request(%s)&#39;, this.clientId, toClientId);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  var self = this,
-    connection,
-    req,
-    requestId,
-    secret;</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  function sendRequest () {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>debug(&#39;%s sendRequest() to %s&#39;, self.clientId, toClientId);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>return new Promise (function (resolve, reject) {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  try {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    connection = self.getConnection(toClientId);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    if (!connection) {
-      reject(&#39;ECLIENTCONNECTION&#39;);
-      return;
-    }</code></pre></div></div><div class="code"><div class="wrapper">          </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    // generate a chunk request id
-    requestId = MqttReqRes.randomString(30);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    secret = MqttReqRes.secret(connection);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    // build request object
-    req = {
-      // chunk request id
-      requestId: requestId,
-      payload: MqttReqRes.encrypt(messageChunkStr, secret) 
-    };</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    // pubish request
-    self.mqttClient.publish(        
-      connection.topicSend, 
-      JSON.stringify(req), 
-      {qos: 0}, 
-      function (err) {
-        if (err) {
-          debug(err);
-          reject(err);
-        }
-        else {
-          resolve();
-        }
-      }
-    );
-  }
-  catch (e) {
-    debug(e);
-    reject(e);
-  }
-});</code></pre>
-<p>  }</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  return this.connect(toClientId)
-    .then(sendRequest)
-    .then(function () {
-      return self.requestPromiseResponse(requestId, secret);
-    });</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-comment">// ;</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>// ### MqttReqRes.requestPromiseResponse(requestId, secret)
-MqttReqRes.prototype.requestPromiseResponse = function (requestId, secret) {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  debug(&#39;%s requestPromiseResponse()&#39;, this.clientId);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  var self =  this;</p></div></div><div class="code"><div class="wrapper">    </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  return new Promise (function (resolve, reject) {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>var result = {
-  payload: null,
-  type: null
-};</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>function handleResponse (responseMessage) {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  var chunk;</code></pre></div></div><div class="code"><div class="wrapper">        </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  if (responseMessage.respondsTo === requestId) {</code></pre></div></div><div class="code"><div class="wrapper">          </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    try {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      chunk = JSON.parse(MqttReqRes.decrypt(responseMessage.payload, secret));</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      if (!result.type) {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        result.type = chunk.type;</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        debug(
-          &#39;%s requestPromiseResponse.handleResponse() chunk type is %s&#39;, 
-          self.clientId, result.type
-        );              
-      }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      if (result.type === &#39;ArrayBuffer&#39;) {</code></pre></div></div><div class="code"><div class="wrapper">             </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        if (result.payload === null) {
-          result.payload = [];
-        }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        chunk.data.split(&#39;,&#39;).forEach(function (byteStr) {
-          result.payload.push(byteStr);
-        });
-      } 
-      else {
-        // assume type string or JSON
-        if (result.payload === null) {
-          result.payload = &#39;&#39;;
-        }
-        result.payload += chunk.data;
-      }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      if (chunk.eos) {</code></pre></div></div><div class="code"><div class="wrapper">              </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        self.removeListener(&#39;_response&#39;, handleResponse);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        if (result.type === &#39;ArrayBuffer&#39;) {
-          result.payload = Uint8Array.from(result.payload).buffer;
-        }
-        else if (result.type === &#39;Object&#39;) {
-          result.payload = JSON.parse(result.payload);
-        }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        resolve(result);
-        self.emit(&#39;response&#39;, result);
-      }
-    }
-    catch(e) {
-      reject(e);
-    }
-  }
-}</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>self.on(&#39;_response&#39;, handleResponse);</code></pre>
-<p>  });</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-comment">// ;</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>// ### MqttReqRes.handleRequestMessage(topicPath, requestMessage) 
-MqttReqRes.prototype.handleRequestMessage = function (topicPath, requestMessage) {</p></div></div><div class="code"><div class="wrapper">    </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  debug(&#39;%s handleRequestMessage(%s)&#39;, this.clientId, topicPath.join(&#39;/&#39;));</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  var self = this,
-    req,
-    res,
-    clientId,
-    connection,
-    secret;</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  if (&#39;function&#39; !== typeof this.fnOnRequest) {
-    // no request handler defined, ignore message request
-    return this;
-  }</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  clientId = topicPath[1];</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  connection = this.getConnection(clientId);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  if (!MqttReqRes.isConnected(connection)) {
-    // unknown connection, do not respond
-    return this;
-  }</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  secret = MqttReqRes.secret(connection);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  req = {
-    topic: topicPath.join(&#39;/&#39;),
-    payload: MqttReqRes.decrypt(requestMessage.payload, secret),
-    connection: connection
-  };</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  res = {
-    respondsTo: requestMessage.chunkId,
-    send: function (payload) {
-      return self.sendResponse(connection, requestMessage.respondsTo, payload, secret);
-    }
-  };</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  // call request handler
-  this.fnOnRequest(req, res);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  return this;</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-comment">// ;</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>// ### sendResponse(object connection, string respondToRequestId, string|object|ArrayBuffer payload, string secret)
-MqttReqRes.prototype.sendResponse = function (connection, respondToRequestId, payload, secret) {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  debug(&#39;%s sendResponse() respondToRequestId %s&#39;, this.clientId, respondToRequestId);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  // ArrayBuffer
-  var self = this,
-    type,
-    offset = 0,
-    payloadLength,
-    chunkno = 0,
-    remainingLength,
-    streamId = MqttReqRes.randomString(10),
-    eos = false;</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  if (payload instanceof ArrayBuffer) {
-    // ArrayBuffer
-    type = &#39;ArrayBuffer&#39;;
-  }
-  else if (payload instanceof Object) {
-    type = &#39;JSON&#39;;
-  }
-  else {
-    type = &#39;string&#39;;
-  }</p></div></div><div class="code"><div class="wrapper">    </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  debug(&#39;%s sendResponse() type: %s&#39;, this.clientId, type);    </p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  if (type === &#39;JSON&#39;) {
-    // payload as a JSON string
-    payload = JSON.stringify(payload);
-  }
-  else if (type === &#39;string&#39;){
-    // payload as a string
-    payload = String(payload);<br>  }</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  remainingLength = payloadLength = (type === &#39;ArrayBuffer&#39; ? 
-        payload.byteLength : payload.length);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  function chunkResponse () {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>debug(
-  &#39;%s chunkResponse() chunkno %d remainingLength %d&#39;, 
-  self.clientId, chunkno, remainingLength
-);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>return new Promise (function (resolve, reject) {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  var chunkSize,
-    chunkStr,
-    chunkUint8Array,
-    message;</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  chunkSize = remainingLength &gt;= MAX_CHUNK_SIZE ?
-    MAX_CHUNK_SIZE : remainingLength;</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  eos = chunkSize === remainingLength;</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  if (chunkSize) {
-    if (type === &#39;ArrayBuffer&#39;) {
-      // chunk as Uint8Array
-      // new Uint8Array(buffer [, byteOffset [, length]]);
-      chunkUint8Array = new Uint8Array(payload, offset, chunkSize);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      chunkStr = chunkUint8Array.join(&#39;,&#39;);
-    }
-    else {
-      chunkStr = payload.substr(offset, chunkSize);
-    }
-  }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  message = JSON.stringify({
-    respondsTo: respondToRequestId,
-    streamId: streamId,
-    data: chunkStr,
-    type: type,
-    chunkno: chunkno,
-    eos: eos
-  });</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  self.sendResponseChunk(
-    connection,
-    respondToRequestId,
-    message,
-    secret
-  )
-  .then(function () {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      debug(&#39;%s chunkResponse () resolved&#39;, self.clientId);</code></pre></div></div><div class="code"><div class="wrapper">            </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      offset += chunkSize;</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      remainingLength = payloadLength - offset;</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      self.emit(
-        &#39;_stream-response-chunk&#39;, 
-        {streamId: streamId, eos: eos}
-      );
-    }, reject); 
-});</code></pre>
-<p>  } // chunkResponse</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  function waitForResponseChunksDone () {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>debug(
-  &#39;%s waitForResponseChunksDone() streamId %s payloadLength %d&#39;, 
-  self.clientId, streamId, payloadLength
-);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>return new Promise (function (resolve, reject) {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  function onResponseChunk (ev) {
-    if (ev.streamId === streamId) {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      if (ev.eos) {
-        self.removeListener(&#39;_stream-response-chunk&#39;, onResponseChunk);
-        resolve();
-      }
-      else {
-        // start next chunk request
-        ++chunkno;
-        chunkResponse().catch(reject);            
-      }
-    }
-  }</code></pre></div></div><div class="code"><div class="wrapper">        </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  self.on(&#39;_stream-response-chunk&#39;, onResponseChunk);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  // start first chunk response
-  chunkResponse().catch(reject);
-});</code></pre>
-<p>  } // waitForResponseChunksDone</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  return waitForResponseChunksDone();</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-comment">// ;</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>// ### MqttReqRes.sendResponseChunk(object connection, string respondToRequestId, string payload, string secret)
-MqttReqRes.prototype.sendResponseChunk = function (connection, respondToRequestId, payload, secret) {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  debug(&#39;%s sendResponseChunk()&#39;, this.clientId);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  var self = this;</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  return new Promise (function (resolve, reject) {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>var resMessage = {
-  respondsTo: respondToRequestId
-};</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>try {
-  resMessage.payload = MqttReqRes.encrypt(payload, secret);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  self.mqttClient.publish(        
-    connection.topicSend, 
-    JSON.stringify(resMessage), 
-    {qos: 0}, 
-    function (err) {
-      if (err) {
-        // todo: expose error to this client
-        debug(err);
-        reject(err);
-      }
-      else {
-        resolve();
-      }
-    }
-  );    
-}
-catch (e) {
-  // todo: handle/expose error
-  debug(e);
-}</code></pre>
-<p>  });</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-comment">// ;</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>// ### onRequest(function onRequestHandler)
-MqttReqRes.prototype.onRequest = function (onRequestCallback) {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  debug(&#39;%s onRequest()&#39;, this.clientId);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  var self = this,
-    currentStreams = {};</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  function pWaitForEOS (streamId) {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>debug(&#39;%s pWaitForEOS(%s)&#39;, self.clientId, streamId);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>return new Promise (function (resolve, reject) {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  var result = null,
-    type;</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  function onStreamOnRequestChunk (req, res, chunk) {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    try {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    debug(
-      &#39;%s onStreamOnRequestChunk() chunkno %d data.length %d&#39;, 
-      self.clientId, chunk.chunkno, chunk.data.length
-    );</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    if (chunk.streamId === streamId) {</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      if (!type) {
-        type = chunk.type;</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        debug(
-          &#39;%s onStreamOnRequestChunk() chunk type is %s&#39;, 
-          self.clientId, type
-        );              
-      }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      if (type === &#39;ArrayBuffer&#39;) {</code></pre></div></div><div class="code"><div class="wrapper">             </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        if (result === null) {
-          result = [];
-        }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        chunk.data.split(&#39;,&#39;).forEach(function (byteStr) {
-          result.push(byteStr);
-        });
-      } 
-      else {
-        // assume type string or JSON
-        if (result === null) {
-          result = &#39;&#39;;
-        }
-        result += chunk.data;
-      }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>      if (chunk.eos) {</code></pre></div></div><div class="code"><div class="wrapper">              </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        // end of stream</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        self.removeListener(&#39;_stream-on-request-chunk&#39;, onStreamOnRequestChunk);
-        delete currentStreams[streamId];</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        if (type === &#39;ArrayBuffer&#39;) {
-          req.payload = Uint8Array.from(result).buffer;
-        }
-        else if (type === &#39;Object&#39;) {
-          req.payload = JSON.parse(result);
-        }
-        else {
-          req.payload = result;
-        }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        req.type = type;</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>        resolve([req, res]);
-      }
-      else {
-        // respond chunk ack
-        res.send({
-          streamId: streamId,
-          chunkno: chunk.chunkno
-        });
-      }
-    }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>    }
-    catch (e) {
-      debug(e);
-      reject(e);     
-    }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  } // onStreamOnRequestChunk</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  self.on(&#39;_stream-on-request-chunk&#39;, onStreamOnRequestChunk);
-});</code></pre>
-<p>  }</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  function onStreamRequest (req, res) {</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>debug(&#39;%s onStreamRequest()&#39;, self.clientId);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>var streamMessage;</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>try {
-  streamMessage = JSON.parse(req.payload);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  if (!streamMessage ||
-    !streamMessage.streamId) {
-    return;
-  }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  if (!currentStreams[streamMessage.streamId]) {
-    // new stream
-    currentStreams[streamMessage.streamId] = pWaitForEOS(streamMessage.streamId)
-      .then(function (result) {
-        onRequestCallback.apply(self, result);
-      });
-  }</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>  self.emit(&#39;_stream-on-request-chunk&#39;, req, res, streamMessage);</code></pre></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><pre><code>}
-catch (e) {
-  return;
-}</code></pre>
-<p>  } // onStreamRequest</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  this.fnOnRequest = onStreamRequest; </p></div></div><div class="code"><div class="wrapper">    </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  return this;</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-comment">// ;</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h4 id="connecttoclientid-sharedsecret">connect([toClientId, sharedSecret])</h4>
+  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h4 id="connecttoclientid-sharedsecret">connect([toClientId, sharedSecret])</h4>
 <ul>
 <li>toClientId string optional default undefined. the id of the client to connect to     </li>
 <li>sharedSecret string optional, required when toClientId is set   </li>
@@ -1443,11 +1154,7 @@ catch (e) {
         <span class="hljs-keyword">else</span> {
           <span class="hljs-keyword">throw</span>(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'EMESSAGETYPE'</span>));
         }
-
-        </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>if (message.chunkId) {
-  // this is a request message</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>  this.handleRequestMessage(topicPath, message);</p></div></div><div class="code"><div class="wrapper">        <span class="hljs-comment">// </span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>else if (message.ack) {
-  // this is a response message
-  this.handleAckMessage(topicPath, message);</p></div></div><div class="code"><div class="wrapper">        <span class="hljs-comment">// </span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>// else: ignore</p></div></div><div class="code"><div class="wrapper">      }
+      }
 
     }
     <span class="hljs-keyword">catch</span> (e) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>ignore errors</p></div></div><div class="code"><div class="wrapper">      debug(e);
@@ -1532,11 +1239,7 @@ catch (e) {
       fnGetSharedSecret : <span class="hljs-literal">null</span>;
 
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>;
-  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqresgetsharedsecretconnection">MqttReqRes.getSharedSecret(connection)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.getSharedSecret = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection</span>) </span>{
-
-    debug(<span class="hljs-string">'%s getSharedSecret(%s)'</span>, <span class="hljs-keyword">this</span>.clientId, connection &amp;&amp; connection.clientId);
-
-    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>;
+  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqresgetsharedsecretconnection">MqttReqRes.getSharedSecret(connection)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.getSharedSecret = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s getSharedSecret(%s)&#39;, this.clientId, connection &amp;&amp; connection.clientId);</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>;
 
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
       <span class="hljs-keyword">if</span> (!connection) {
@@ -1555,11 +1258,7 @@ catch (e) {
         resolve();
       }
     });
-  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqrespublishconnectackclientid">MqttReqRes.publishConnectAck(clientId)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.publishConnectAck = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">clientId</span>) </span>{
-
-    debug(<span class="hljs-string">'%s publishConnectAck(%s)'</span>, <span class="hljs-keyword">this</span>.clientId, clientId);
-
-    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>;
+  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqrespublishconnectackclientid">MqttReqRes.publishConnectAck(clientId)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.publishConnectAck = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">clientId</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s publishConnectAck(%s)&#39;, this.clientId, clientId);</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>;
 
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span> (<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
       </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>get connection </p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">var</span> connection = self.getConnection(clientId),
@@ -1587,8 +1286,7 @@ catch (e) {
         }
       );
     });      
-  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqreshandleconnectacktopicpath-ackmessage">MqttReqRes.handleConnectAck(topicPath, ackMessage)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.handleConnectAck = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">topicPath, ackMessage</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>A handleConnectAck (ackMessage{connackB, channelNonceB})</p></div></div><div class="code"><div class="wrapper">    debug(<span class="hljs-string">'%s handleConnectAck(%s)'</span>, <span class="hljs-keyword">this</span>.clientId, topicPath.join(<span class="hljs-string">'/'</span>));
-    
+  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqreshandleconnectacktopicpath-ackmessage">MqttReqRes.handleConnectAck(topicPath, ackMessage)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.handleConnectAck = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">topicPath, ackMessage</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>A handleConnectAck (ackMessage{connackB, channelNonceB})</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s handleConnectAck(%s)&#39;, this.clientId, topicPath.join(&#39;/&#39;));</p></div></div><div class="code"><div class="wrapper">    
     <span class="hljs-keyword">var</span> clientId;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>validate topic</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>check if connecting to this client</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">if</span> (topicPath[<span class="hljs-number">1</span>] !== <span class="hljs-keyword">this</span>.clientId) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>not to this client</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">return</span>;
     }
 
