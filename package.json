@@ -1,6 +1,6 @@
 {
   "name": "mqtt-reqres",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "mqtt request/response client",
   "main": "./lib/mqtt-reqres.js",
   "scripts": {
@@ -15,6 +15,10 @@
   },
   "author": "kruemelo",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/kruemelo/mqtt-reqres.git"
+  },
   "dependencies": {
     "mqtt": "^2.0.1"
   },
