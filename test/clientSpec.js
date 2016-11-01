@@ -189,6 +189,43 @@ describe('MqttReqResClient', () => {
   });
 
 
+  it('should request ping and ack', done => {
+
+    var bReceivedPingRequest = false;
+
+    clientA = newClient(clientAId);
+    clientB = newClient(clientBId);
+
+
+    clientB.sharedSecret(function (clientId, callback) {
+      debug('clientB.sharedSecret(%s)', clientId);
+      callback(clientId === clientAId ? sharedSecret : null);
+    });
+
+
+    clientB.on('_mqtt-message-ping', function () {
+      bReceivedPingRequest = true;
+    });
+
+
+    clientB.connect()
+      .then(function () {
+        return clientA.connect(clientBId, sharedSecret);
+      })
+      .then(function () {
+        return clientA.ping(clientBId);
+      })
+      .then(function () {
+
+        assert.isTrue(bReceivedPingRequest);
+
+
+        closeClients(clientA, clientB).then(() => done());
+      })
+      .catch(pcatch);
+  });
+
+
   it('should request and respond', done => {
 
     clientA = newClient(clientAId);

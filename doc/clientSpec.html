@@ -178,6 +178,43 @@ clientA.connect()
   });
 
 
+  it(<span class="hljs-string">'should request ping and ack'</span>, done =&gt; {
+
+    <span class="hljs-keyword">var</span> bReceivedPingRequest = <span class="hljs-literal">false</span>;
+
+    clientA = newClient(clientAId);
+    clientB = newClient(clientBId);
+
+
+    clientB.sharedSecret(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">clientId, callback</span>) </span>{
+      debug(<span class="hljs-string">'clientB.sharedSecret(%s)'</span>, clientId);
+      callback(clientId === clientAId ? sharedSecret : <span class="hljs-literal">null</span>);
+    });
+
+
+    clientB.on(<span class="hljs-string">'_mqtt-message-ping'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+      bReceivedPingRequest = <span class="hljs-literal">true</span>;
+    });
+
+
+    clientB.connect()
+      .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+        <span class="hljs-keyword">return</span> clientA.connect(clientBId, sharedSecret);
+      })
+      .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+        <span class="hljs-keyword">return</span> clientA.ping(clientBId);
+      })
+      .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+
+        assert.isTrue(bReceivedPingRequest);
+
+
+        closeClients(clientA, clientB).then(() =&gt; done());
+      })
+      .catch(pcatch);
+  });
+
+
   it(<span class="hljs-string">'should request and respond'</span>, done =&gt; {
 
     clientA = newClient(clientAId);

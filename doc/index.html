@@ -118,6 +118,10 @@ clientA.connect(&#39;client-b&#39;, &#39;shared-secret-a-b&#39;)
     // connect to client-b failed
     console.error(reason);
   });</code></pre>
+<h3 id="pingtoclientid">ping(toClientId)</h3>
+<p>send ping request to client. if not yet connected, connects to client.</p>
+<p><strong>toClientId</strong> string, optional. if set, connects to a client with the specified id. if omitted only connects to the broker.</p>
+<p><strong>returns</strong> Promise resolved, when &#39;ping-ack&#39; was received.</p>
 <h3 id="disconnectfromclientid">disconnect([fromClientId])</h3>
 <p>disconnect from broker or client with <code>toClientId</code> set.</p>
 <p><strong>fromClientId</strong> string, optional. if set, disconnects from a client with the specified id. if omitted, completely disconnects also also from the broker.</p>

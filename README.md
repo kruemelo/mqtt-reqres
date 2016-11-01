@@ -177,6 +177,14 @@ clientA.connect('client-b', 'shared-secret-a-b')
   });
 ```
 
+### ping(toClientId)
+
+send ping request to client. if not yet connected, connects to client.
+
+**toClientId** string, optional. if set, connects to a client with the specified id. if omitted only connects to the broker.
+
+**returns** Promise resolved, when 'ping-ack' was received.
+
 
 ### disconnect([fromClientId])
 
