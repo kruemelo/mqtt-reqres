@@ -97,7 +97,7 @@ describe('MqttReqResClient', () => {
 
     assert(!clientA.mqttClient || !clientA.mqttClient.connected);
 
-    clientA.on('broker-connect', function () {
+    clientA.on('broker.connect', function () {
 
       assert.isTrue(clientA.mqttClient.connected, 'mqttClient should be connected to broker');
       assert.isTrue(clientA.subscribedConnect, 'client should have subscribed connect topic');
@@ -164,7 +164,7 @@ describe('MqttReqResClient', () => {
       callback(sharedSecret);
     });
 
-    clientB.on('client-connect', function (clientId) {
+    clientB.on('client.connect', function (clientId) {
       
       var connectedClients = clientB.getConnected(),
         connClientA = connectedClients[0];

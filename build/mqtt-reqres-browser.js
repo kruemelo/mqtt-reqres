@@ -264,7 +264,8 @@ module.exports = function () {
 
   // ### dependencies
   var mqtt = require('mqtt');
-  var EventEmitter = require('events');
+  // var EventEmitter = require('events');
+  var EventEmitter = require('eventemitter2');
   var CryptoJS = require('./crypto-js/cryptojs-module.js');
   var debug = require('debug')('mqtt-reqres');
   var noop = function () {};
@@ -1298,7 +1299,7 @@ module.exports = function () {
       })
       .then(function () {
 
-        self.emit('broker-connect');          
+        self.emit('broker.connect');          
 
         if (toClientId) {
           // connect to other client when toClientId is set
@@ -1487,7 +1488,7 @@ module.exports = function () {
 
             self.removeListener('_client-connack', handleClientConnack);
 
-            debug('%s client-connect in connectToClient()', self.clientId, toClientId);   
+            debug('%s client connect in connectToClient()', self.clientId, toClientId);   
 
             //     - set connack = connreq
             connection.connack = connection.connreq;
@@ -1544,7 +1545,7 @@ module.exports = function () {
       })
       .then(function () {    
         if (MqttReqRes.isConnected(connection)) {
-          self.emit('client-connect', toClientId);
+          self.emit('client.connect', toClientId);
           return Promise.resolve(toClientId);
         }
         else {
@@ -1758,7 +1759,7 @@ module.exports = function () {
             })
             .then(function () {
               if (MqttReqRes.isConnected(connection)) {
-                self.emit('client-connect', clientId);
+                self.emit('client.connect', clientId);
               }
               else {
                 debug('failed to connect to client', connection);
@@ -2029,7 +2030,8 @@ module.exports = function () {
 
     debug('%s disconnectClient(%s)', this.clientId, connection && connection.clientId);
 
-    var self = this;
+    var self = this,
+      index;
 
     return new Promise(function (resolve) {
 
@@ -2039,7 +2041,11 @@ module.exports = function () {
       }
 
       // remove from clients list
-      self.connections.splice(self.connections.indexOf(connection), 1);
+      index = self.connections.indexOf(connection);
+
+      if (index !== -1) {
+        self.connections.splice(index, 1);
+      }
 
       if (connection.topicReceive) {
         // unsubscribe receive topic
@@ -2100,7 +2106,7 @@ module.exports = function () {
 
 }();
 
-},{"./crypto-js/cryptojs-module.js":1,"debug":10,"events":58,"mqtt":25}],3:[function(require,module,exports){
+},{"./crypto-js/cryptojs-module.js":1,"debug":10,"eventemitter2":15,"mqtt":26}],3:[function(require,module,exports){
 (function (Buffer){
 var DuplexStream = require('readable-stream/duplex')
   , util         = require('util')
@@ -2347,7 +2353,7 @@ BufferList.prototype.destroy = function destroy () {
 module.exports = BufferList
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":57,"readable-stream/duplex":4,"util":71}],4:[function(require,module,exports){
+},{"buffer":58,"readable-stream/duplex":4,"util":72}],4:[function(require,module,exports){
 module.exports = require("./lib/_stream_duplex.js")
 
 },{"./lib/_stream_duplex.js":5}],5:[function(require,module,exports){
@@ -2426,7 +2432,7 @@ function forEach(xs, f) {
     f(xs[i], i);
   }
 }
-},{"./_stream_readable":6,"./_stream_writable":7,"core-util-is":9,"inherits":15,"process-nextick-args":33}],6:[function(require,module,exports){
+},{"./_stream_readable":6,"./_stream_writable":7,"core-util-is":9,"inherits":16,"process-nextick-args":34}],6:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -3309,7 +3315,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'))
-},{"./_stream_duplex":5,"_process":62,"buffer":57,"core-util-is":9,"events":58,"inherits":15,"isarray":16,"process-nextick-args":33,"string_decoder/":43,"util":56}],7:[function(require,module,exports){
+},{"./_stream_duplex":5,"_process":63,"buffer":58,"core-util-is":9,"events":59,"inherits":16,"isarray":17,"process-nextick-args":34,"string_decoder/":44,"util":57}],7:[function(require,module,exports){
 (function (process){
 // A bit simpler than readable streams.
 // Implement an async ._write(chunk, encoding, cb), and it'll handle all
@@ -3828,7 +3834,7 @@ function CorkedRequest(state) {
   };
 }
 }).call(this,require('_process'))
-},{"./_stream_duplex":5,"_process":62,"buffer":57,"core-util-is":9,"events":58,"inherits":15,"process-nextick-args":33,"util-deprecate":50}],8:[function(require,module,exports){
+},{"./_stream_duplex":5,"_process":63,"buffer":58,"core-util-is":9,"events":59,"inherits":16,"process-nextick-args":34,"util-deprecate":51}],8:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -3940,7 +3946,7 @@ exports.allocUnsafeSlow = function allocUnsafeSlow(size) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"buffer":57}],9:[function(require,module,exports){
+},{"buffer":58}],9:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -4051,7 +4057,7 @@ function objectToString(o) {
 }
 
 }).call(this,{"isBuffer":require("../../../../../../../usr/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
-},{"../../../../../../../usr/lib/node_modules/browserify/node_modules/is-buffer/index.js":60}],10:[function(require,module,exports){
+},{"../../../../../../../usr/lib/node_modules/browserify/node_modules/is-buffer/index.js":61}],10:[function(require,module,exports){
 
 /**
  * This is the web browser implementation of `debug()`.
@@ -4420,7 +4426,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":31}],12:[function(require,module,exports){
+},{"ms":32}],12:[function(require,module,exports){
 (function (process,Buffer){
 var stream = require('readable-stream')
 var eos = require('end-of-stream')
@@ -4652,7 +4658,7 @@ Duplexify.prototype.end = function(data, enc, cb) {
 module.exports = Duplexify
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"_process":62,"buffer":57,"end-of-stream":13,"inherits":15,"readable-stream":40,"stream-shift":42}],13:[function(require,module,exports){
+},{"_process":63,"buffer":58,"end-of-stream":13,"inherits":16,"readable-stream":41,"stream-shift":43}],13:[function(require,module,exports){
 var once = require('once');
 
 var noop = function() {};
@@ -4725,7 +4731,7 @@ var eos = function(stream, opts, callback) {
 };
 
 module.exports = eos;
-},{"once":32}],14:[function(require,module,exports){
+},{"once":33}],14:[function(require,module,exports){
 var once = require('once');
 
 var noop = function() {};
@@ -4809,7 +4815,723 @@ var eos = function(stream, opts, callback) {
 };
 
 module.exports = eos;
-},{"once":32}],15:[function(require,module,exports){
+},{"once":33}],15:[function(require,module,exports){
+/*!
+ * EventEmitter2
+ * https://github.com/hij1nx/EventEmitter2
+ *
+ * Copyright (c) 2013 hij1nx
+ * Licensed under the MIT license.
+ */
+;!function(undefined) {
+
+  var isArray = Array.isArray ? Array.isArray : function _isArray(obj) {
+    return Object.prototype.toString.call(obj) === "[object Array]";
+  };
+  var defaultMaxListeners = 10;
+
+  function init() {
+    this._events = {};
+    if (this._conf) {
+      configure.call(this, this._conf);
+    }
+  }
+
+  function configure(conf) {
+    if (conf) {
+      this._conf = conf;
+
+      conf.delimiter && (this.delimiter = conf.delimiter);
+      this._events.maxListeners = conf.maxListeners !== undefined ? conf.maxListeners : defaultMaxListeners;
+      conf.wildcard && (this.wildcard = conf.wildcard);
+      conf.newListener && (this.newListener = conf.newListener);
+
+      if (this.wildcard) {
+        this.listenerTree = {};
+      }
+    } else {
+      this._events.maxListeners = defaultMaxListeners;
+    }
+  }
+
+  function logPossibleMemoryLeak(count) {
+    console.error('(node) warning: possible EventEmitter memory ' +
+      'leak detected. %d listeners added. ' +
+      'Use emitter.setMaxListeners() to increase limit.',
+      count);
+
+    if (console.trace){
+      console.trace();
+    }
+  }
+
+  function EventEmitter(conf) {
+    this._events = {};
+    this.newListener = false;
+    configure.call(this, conf);
+  }
+  EventEmitter.EventEmitter2 = EventEmitter; // backwards compatibility for exporting EventEmitter property
+
+  //
+  // Attention, function return type now is array, always !
+  // It has zero elements if no any matches found and one or more
+  // elements (leafs) if there are matches
+  //
+  function searchListenerTree(handlers, type, tree, i) {
+    if (!tree) {
+      return [];
+    }
+    var listeners=[], leaf, len, branch, xTree, xxTree, isolatedBranch, endReached,
+        typeLength = type.length, currentType = type[i], nextType = type[i+1];
+    if (i === typeLength && tree._listeners) {
+      //
+      // If at the end of the event(s) list and the tree has listeners
+      // invoke those listeners.
+      //
+      if (typeof tree._listeners === 'function') {
+        handlers && handlers.push(tree._listeners);
+        return [tree];
+      } else {
+        for (leaf = 0, len = tree._listeners.length; leaf < len; leaf++) {
+          handlers && handlers.push(tree._listeners[leaf]);
+        }
+        return [tree];
+      }
+    }
+
+    if ((currentType === '*' || currentType === '**') || tree[currentType]) {
+      //
+      // If the event emitted is '*' at this part
+      // or there is a concrete match at this patch
+      //
+      if (currentType === '*') {
+        for (branch in tree) {
+          if (branch !== '_listeners' && tree.hasOwnProperty(branch)) {
+            listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i+1));
+          }
+        }
+        return listeners;
+      } else if(currentType === '**') {
+        endReached = (i+1 === typeLength || (i+2 === typeLength && nextType === '*'));
+        if(endReached && tree._listeners) {
+          // The next element has a _listeners, add it to the handlers.
+          listeners = listeners.concat(searchListenerTree(handlers, type, tree, typeLength));
+        }
+
+        for (branch in tree) {
+          if (branch !== '_listeners' && tree.hasOwnProperty(branch)) {
+            if(branch === '*' || branch === '**') {
+              if(tree[branch]._listeners && !endReached) {
+                listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], typeLength));
+              }
+              listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i));
+            } else if(branch === nextType) {
+              listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i+2));
+            } else {
+              // No match on this one, shift into the tree but not in the type array.
+              listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i));
+            }
+          }
+        }
+        return listeners;
+      }
+
+      listeners = listeners.concat(searchListenerTree(handlers, type, tree[currentType], i+1));
+    }
+
+    xTree = tree['*'];
+    if (xTree) {
+      //
+      // If the listener tree will allow any match for this part,
+      // then recursively explore all branches of the tree
+      //
+      searchListenerTree(handlers, type, xTree, i+1);
+    }
+
+    xxTree = tree['**'];
+    if(xxTree) {
+      if(i < typeLength) {
+        if(xxTree._listeners) {
+          // If we have a listener on a '**', it will catch all, so add its handler.
+          searchListenerTree(handlers, type, xxTree, typeLength);
+        }
+
+        // Build arrays of matching next branches and others.
+        for(branch in xxTree) {
+          if(branch !== '_listeners' && xxTree.hasOwnProperty(branch)) {
+            if(branch === nextType) {
+              // We know the next element will match, so jump twice.
+              searchListenerTree(handlers, type, xxTree[branch], i+2);
+            } else if(branch === currentType) {
+              // Current node matches, move into the tree.
+              searchListenerTree(handlers, type, xxTree[branch], i+1);
+            } else {
+              isolatedBranch = {};
+              isolatedBranch[branch] = xxTree[branch];
+              searchListenerTree(handlers, type, { '**': isolatedBranch }, i+1);
+            }
+          }
+        }
+      } else if(xxTree._listeners) {
+        // We have reached the end and still on a '**'
+        searchListenerTree(handlers, type, xxTree, typeLength);
+      } else if(xxTree['*'] && xxTree['*']._listeners) {
+        searchListenerTree(handlers, type, xxTree['*'], typeLength);
+      }
+    }
+
+    return listeners;
+  }
+
+  function growListenerTree(type, listener) {
+
+    type = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+
+    //
+    // Looks for two consecutive '**', if so, don't add the event at all.
+    //
+    for(var i = 0, len = type.length; i+1 < len; i++) {
+      if(type[i] === '**' && type[i+1] === '**') {
+        return;
+      }
+    }
+
+    var tree = this.listenerTree;
+    var name = type.shift();
+
+    while (name !== undefined) {
+
+      if (!tree[name]) {
+        tree[name] = {};
+      }
+
+      tree = tree[name];
+
+      if (type.length === 0) {
+
+        if (!tree._listeners) {
+          tree._listeners = listener;
+        }
+        else {
+          if (typeof tree._listeners === 'function') {
+            tree._listeners = [tree._listeners];
+          }
+
+          tree._listeners.push(listener);
+
+          if (
+            !tree._listeners.warned &&
+            this._events.maxListeners > 0 &&
+            tree._listeners.length > this._events.maxListeners
+          ) {
+            tree._listeners.warned = true;
+            logPossibleMemoryLeak(tree._listeners.length);
+          }
+        }
+        return true;
+      }
+      name = type.shift();
+    }
+    return true;
+  }
+
+  // By default EventEmitters will print a warning if more than
+  // 10 listeners are added to it. This is a useful default which
+  // helps finding memory leaks.
+  //
+  // Obviously not all Emitters should be limited to 10. This function allows
+  // that to be increased. Set to zero for unlimited.
+
+  EventEmitter.prototype.delimiter = '.';
+
+  EventEmitter.prototype.setMaxListeners = function(n) {
+    if (n !== undefined) {
+      this._events || init.call(this);
+      this._events.maxListeners = n;
+      if (!this._conf) this._conf = {};
+      this._conf.maxListeners = n;
+    }
+  };
+
+  EventEmitter.prototype.event = '';
+
+  EventEmitter.prototype.once = function(event, fn) {
+    this.many(event, 1, fn);
+    return this;
+  };
+
+  EventEmitter.prototype.many = function(event, ttl, fn) {
+    var self = this;
+
+    if (typeof fn !== 'function') {
+      throw new Error('many only accepts instances of Function');
+    }
+
+    function listener() {
+      if (--ttl === 0) {
+        self.off(event, listener);
+      }
+      fn.apply(this, arguments);
+    }
+
+    listener._origin = fn;
+
+    this.on(event, listener);
+
+    return self;
+  };
+
+  EventEmitter.prototype.emit = function() {
+
+    this._events || init.call(this);
+
+    var type = arguments[0];
+
+    if (type === 'newListener' && !this.newListener) {
+      if (!this._events.newListener) {
+        return false;
+      }
+    }
+
+    var al = arguments.length;
+    var args,l,i,j;
+    var handler;
+
+    if (this._all && this._all.length) {
+      handler = this._all.slice();
+      if (al > 3) {
+        args = new Array(al);
+        for (j = 0; j < al; j++) args[j] = arguments[j];
+      }
+
+      for (i = 0, l = handler.length; i < l; i++) {
+        this.event = type;
+        switch (al) {
+        case 1:
+          handler[i].call(this, type);
+          break;
+        case 2:
+          handler[i].call(this, type, arguments[1]);
+          break;
+        case 3:
+          handler[i].call(this, type, arguments[1], arguments[2]);
+          break;
+        default:
+          handler[i].apply(this, args);
+        }
+      }
+    }
+
+    if (this.wildcard) {
+      handler = [];
+      var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+      searchListenerTree.call(this, handler, ns, this.listenerTree, 0);
+    } else {
+      handler = this._events[type];
+      if (typeof handler === 'function') {
+        this.event = type;
+        switch (al) {
+        case 1:
+          handler.call(this);
+          break;
+        case 2:
+          handler.call(this, arguments[1]);
+          break;
+        case 3:
+          handler.call(this, arguments[1], arguments[2]);
+          break;
+        default:
+          args = new Array(al - 1);
+          for (j = 1; j < al; j++) args[j - 1] = arguments[j];
+          handler.apply(this, args);
+        }
+        return true;
+      } else if (handler) {
+        // need to make copy of handlers because list can change in the middle
+        // of emit call
+        handler = handler.slice();
+      }
+    }
+
+    if (handler && handler.length) {
+      if (al > 3) {
+        args = new Array(al - 1);
+        for (j = 1; j < al; j++) args[j - 1] = arguments[j];
+      }
+      for (i = 0, l = handler.length; i < l; i++) {
+        this.event = type;
+        switch (al) {
+        case 1:
+          handler[i].call(this);
+          break;
+        case 2:
+          handler[i].call(this, arguments[1]);
+          break;
+        case 3:
+          handler[i].call(this, arguments[1], arguments[2]);
+          break;
+        default:
+          handler[i].apply(this, args);
+        }
+      }
+      return true;
+    } else if (!this._all && type === 'error') {
+      if (arguments[1] instanceof Error) {
+        throw arguments[1]; // Unhandled 'error' event
+      } else {
+        throw new Error("Uncaught, unspecified 'error' event.");
+      }
+      return false;
+    }
+
+    return !!this._all;
+  };
+
+  EventEmitter.prototype.emitAsync = function() {
+
+    this._events || init.call(this);
+
+    var type = arguments[0];
+
+    if (type === 'newListener' && !this.newListener) {
+        if (!this._events.newListener) { return Promise.resolve([false]); }
+    }
+
+    var promises= [];
+
+    var al = arguments.length;
+    var args,l,i,j;
+    var handler;
+
+    if (this._all) {
+      if (al > 3) {
+        args = new Array(al);
+        for (j = 1; j < al; j++) args[j] = arguments[j];
+      }
+      for (i = 0, l = this._all.length; i < l; i++) {
+        this.event = type;
+        switch (al) {
+        case 1:
+          promises.push(this._all[i].call(this, type));
+          break;
+        case 2:
+          promises.push(this._all[i].call(this, type, arguments[1]));
+          break;
+        case 3:
+          promises.push(this._all[i].call(this, type, arguments[1], arguments[2]));
+          break;
+        default:
+          promises.push(this._all[i].apply(this, args));
+        }
+      }
+    }
+
+    if (this.wildcard) {
+      handler = [];
+      var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+      searchListenerTree.call(this, handler, ns, this.listenerTree, 0);
+    } else {
+      handler = this._events[type];
+    }
+
+    if (typeof handler === 'function') {
+      this.event = type;
+      switch (al) {
+      case 1:
+        promises.push(handler.call(this));
+        break;
+      case 2:
+        promises.push(handler.call(this, arguments[1]));
+        break;
+      case 3:
+        promises.push(handler.call(this, arguments[1], arguments[2]));
+        break;
+      default:
+        args = new Array(al - 1);
+        for (j = 1; j < al; j++) args[j - 1] = arguments[j];
+        promises.push(handler.apply(this, args));
+      }
+    } else if (handler && handler.length) {
+      if (al > 3) {
+        args = new Array(al - 1);
+        for (j = 1; j < al; j++) args[j - 1] = arguments[j];
+      }
+      for (i = 0, l = handler.length; i < l; i++) {
+        this.event = type;
+        switch (al) {
+        case 1:
+          promises.push(handler[i].call(this));
+          break;
+        case 2:
+          promises.push(handler[i].call(this, arguments[1]));
+          break;
+        case 3:
+          promises.push(handler[i].call(this, arguments[1], arguments[2]));
+          break;
+        default:
+          promises.push(handler[i].apply(this, args));
+        }
+      }
+    } else if (!this._all && type === 'error') {
+      if (arguments[1] instanceof Error) {
+        return Promise.reject(arguments[1]); // Unhandled 'error' event
+      } else {
+        return Promise.reject("Uncaught, unspecified 'error' event.");
+      }
+    }
+
+    return Promise.all(promises);
+  };
+
+  EventEmitter.prototype.on = function(type, listener) {
+    if (typeof type === 'function') {
+      this.onAny(type);
+      return this;
+    }
+
+    if (typeof listener !== 'function') {
+      throw new Error('on only accepts instances of Function');
+    }
+    this._events || init.call(this);
+
+    // To avoid recursion in the case that type == "newListeners"! Before
+    // adding it to the listeners, first emit "newListeners".
+    this.emit('newListener', type, listener);
+
+    if (this.wildcard) {
+      growListenerTree.call(this, type, listener);
+      return this;
+    }
+
+    if (!this._events[type]) {
+      // Optimize the case of one listener. Don't need the extra array object.
+      this._events[type] = listener;
+    }
+    else {
+      if (typeof this._events[type] === 'function') {
+        // Change to array.
+        this._events[type] = [this._events[type]];
+      }
+
+      // If we've already got an array, just append.
+      this._events[type].push(listener);
+
+      // Check for listener leak
+      if (
+        !this._events[type].warned &&
+        this._events.maxListeners > 0 &&
+        this._events[type].length > this._events.maxListeners
+      ) {
+        this._events[type].warned = true;
+        logPossibleMemoryLeak(this._events[type].length);
+      }
+    }
+
+    return this;
+  };
+
+  EventEmitter.prototype.onAny = function(fn) {
+    if (typeof fn !== 'function') {
+      throw new Error('onAny only accepts instances of Function');
+    }
+
+    if (!this._all) {
+      this._all = [];
+    }
+
+    // Add the function to the event listener collection.
+    this._all.push(fn);
+    return this;
+  };
+
+  EventEmitter.prototype.addListener = EventEmitter.prototype.on;
+
+  EventEmitter.prototype.off = function(type, listener) {
+    if (typeof listener !== 'function') {
+      throw new Error('removeListener only takes instances of Function');
+    }
+
+    var handlers,leafs=[];
+
+    if(this.wildcard) {
+      var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+      leafs = searchListenerTree.call(this, null, ns, this.listenerTree, 0);
+    }
+    else {
+      // does not use listeners(), so no side effect of creating _events[type]
+      if (!this._events[type]) return this;
+      handlers = this._events[type];
+      leafs.push({_listeners:handlers});
+    }
+
+    for (var iLeaf=0; iLeaf<leafs.length; iLeaf++) {
+      var leaf = leafs[iLeaf];
+      handlers = leaf._listeners;
+      if (isArray(handlers)) {
+
+        var position = -1;
+
+        for (var i = 0, length = handlers.length; i < length; i++) {
+          if (handlers[i] === listener ||
+            (handlers[i].listener && handlers[i].listener === listener) ||
+            (handlers[i]._origin && handlers[i]._origin === listener)) {
+            position = i;
+            break;
+          }
+        }
+
+        if (position < 0) {
+          continue;
+        }
+
+        if(this.wildcard) {
+          leaf._listeners.splice(position, 1);
+        }
+        else {
+          this._events[type].splice(position, 1);
+        }
+
+        if (handlers.length === 0) {
+          if(this.wildcard) {
+            delete leaf._listeners;
+          }
+          else {
+            delete this._events[type];
+          }
+        }
+
+        this.emit("removeListener", type, listener);
+
+        return this;
+      }
+      else if (handlers === listener ||
+        (handlers.listener && handlers.listener === listener) ||
+        (handlers._origin && handlers._origin === listener)) {
+        if(this.wildcard) {
+          delete leaf._listeners;
+        }
+        else {
+          delete this._events[type];
+        }
+
+        this.emit("removeListener", type, listener);
+      }
+    }
+
+    function recursivelyGarbageCollect(root) {
+      if (root === undefined) {
+        return;
+      }
+      var keys = Object.keys(root);
+      for (var i in keys) {
+        var key = keys[i];
+        var obj = root[key];
+        if ((obj instanceof Function) || (typeof obj !== "object") || (obj === null))
+          continue;
+        if (Object.keys(obj).length > 0) {
+          recursivelyGarbageCollect(root[key]);
+        }
+        if (Object.keys(obj).length === 0) {
+          delete root[key];
+        }
+      }
+    }
+    recursivelyGarbageCollect(this.listenerTree);
+
+    return this;
+  };
+
+  EventEmitter.prototype.offAny = function(fn) {
+    var i = 0, l = 0, fns;
+    if (fn && this._all && this._all.length > 0) {
+      fns = this._all;
+      for(i = 0, l = fns.length; i < l; i++) {
+        if(fn === fns[i]) {
+          fns.splice(i, 1);
+          this.emit("removeListenerAny", fn);
+          return this;
+        }
+      }
+    } else {
+      fns = this._all;
+      for(i = 0, l = fns.length; i < l; i++)
+        this.emit("removeListenerAny", fns[i]);
+      this._all = [];
+    }
+    return this;
+  };
+
+  EventEmitter.prototype.removeListener = EventEmitter.prototype.off;
+
+  EventEmitter.prototype.removeAllListeners = function(type) {
+    if (arguments.length === 0) {
+      !this._events || init.call(this);
+      return this;
+    }
+
+    if (this.wildcard) {
+      var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+      var leafs = searchListenerTree.call(this, null, ns, this.listenerTree, 0);
+
+      for (var iLeaf=0; iLeaf<leafs.length; iLeaf++) {
+        var leaf = leafs[iLeaf];
+        leaf._listeners = null;
+      }
+    }
+    else if (this._events) {
+      this._events[type] = null;
+    }
+    return this;
+  };
+
+  EventEmitter.prototype.listeners = function(type) {
+    if (this.wildcard) {
+      var handlers = [];
+      var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+      searchListenerTree.call(this, handlers, ns, this.listenerTree, 0);
+      return handlers;
+    }
+
+    this._events || init.call(this);
+
+    if (!this._events[type]) this._events[type] = [];
+    if (!isArray(this._events[type])) {
+      this._events[type] = [this._events[type]];
+    }
+    return this._events[type];
+  };
+
+  EventEmitter.prototype.listenerCount = function(type) {
+    return this.listeners(type).length;
+  };
+
+  EventEmitter.prototype.listenersAny = function() {
+
+    if(this._all) {
+      return this._all;
+    }
+    else {
+      return [];
+    }
+
+  };
+
+  if (typeof define === 'function' && define.amd) {
+     // AMD. Register as an anonymous module.
+    define(function() {
+      return EventEmitter;
+    });
+  } else if (typeof exports === 'object') {
+    // CommonJS
+    module.exports = EventEmitter;
+  }
+  else {
+    // Browser global.
+    window.EventEmitter2 = EventEmitter;
+  }
+}();
+
+},{}],16:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -4834,14 +5556,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 (function (Buffer){
 /* Protocol - protocol constants */
 var protocol = module.exports
@@ -4952,7 +5674,7 @@ protocol.EMPTY = {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":57}],18:[function(require,module,exports){
+},{"buffer":58}],19:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -5011,14 +5733,14 @@ Accumulator.prototype.concat = function () {
 module.exports = generate
 
 }).call(this,require("buffer").Buffer)
-},{"./writeToStream":23,"buffer":57,"events":58,"inherits":15}],19:[function(require,module,exports){
+},{"./writeToStream":24,"buffer":58,"events":59,"inherits":16}],20:[function(require,module,exports){
 'use strict'
 
 exports.parser = require('./parser')
 exports.generate = require('./generate')
 exports.writeToStream = require('./writeToStream')
 
-},{"./generate":18,"./parser":22,"./writeToStream":23}],20:[function(require,module,exports){
+},{"./generate":19,"./parser":23,"./writeToStream":24}],21:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -5036,7 +5758,7 @@ for (var i = 0; i < max; i++) {
 module.exports = cache
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":57}],21:[function(require,module,exports){
+},{"buffer":58}],22:[function(require,module,exports){
 
 function Packet () {
   this.cmd = null
@@ -5050,7 +5772,7 @@ function Packet () {
 
 module.exports = Packet
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 'use strict'
 
 var bl = require('bl')
@@ -5427,7 +6149,7 @@ Parser.prototype._emitError = function (err) {
 
 module.exports = Parser
 
-},{"./constants":17,"./packet":21,"bl":3,"events":58,"inherits":15}],23:[function(require,module,exports){
+},{"./constants":18,"./packet":22,"bl":3,"events":59,"inherits":16}],24:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -5978,7 +6700,7 @@ function byteLength (bufOrString) {
 module.exports = generate
 
 }).call(this,require("buffer").Buffer)
-},{"./constants":17,"./numbers":20,"buffer":57,"process-nextick-args":33}],24:[function(require,module,exports){
+},{"./constants":18,"./numbers":21,"buffer":58,"process-nextick-args":34}],25:[function(require,module,exports){
 (function (process,global){
 'use strict'
 
@@ -6917,7 +7639,7 @@ MqttClient.prototype._nextId = function () {
 module.exports = MqttClient
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./store":29,"./validations":30,"_process":62,"end-of-stream":14,"events":58,"inherits":15,"mqtt-packet":19,"readable-stream":40,"reinterval":41}],25:[function(require,module,exports){
+},{"./store":30,"./validations":31,"_process":63,"end-of-stream":14,"events":59,"inherits":16,"mqtt-packet":20,"readable-stream":41,"reinterval":42}],26:[function(require,module,exports){
 (function (process){
 'use strict'
 
@@ -7059,7 +7781,7 @@ module.exports.connect = connect
 module.exports.MqttClient = MqttClient
 
 }).call(this,require('_process'))
-},{"../client":24,"./tcp":26,"./tls":27,"./ws":28,"_process":62,"url":67,"xtend":54}],26:[function(require,module,exports){
+},{"../client":25,"./tcp":27,"./tls":28,"./ws":29,"_process":63,"url":68,"xtend":55}],27:[function(require,module,exports){
 'use strict'
 var net = require('net')
 
@@ -7080,7 +7802,7 @@ function buildBuilder (client, opts) {
 
 module.exports = buildBuilder
 
-},{"net":56}],27:[function(require,module,exports){
+},{"net":57}],28:[function(require,module,exports){
 'use strict'
 var tls = require('tls')
 
@@ -7121,7 +7843,7 @@ function buildBuilder (mqttClient, opts) {
 
 module.exports = buildBuilder
 
-},{"tls":56}],28:[function(require,module,exports){
+},{"tls":57}],29:[function(require,module,exports){
 (function (process){
 'use strict'
 
@@ -7214,7 +7936,7 @@ if (process.title !== 'browser') {
 }
 
 }).call(this,require('_process'))
-},{"_process":62,"url":67,"websocket-stream":51}],29:[function(require,module,exports){
+},{"_process":63,"url":68,"websocket-stream":52}],30:[function(require,module,exports){
 (function (process){
 'use strict'
 
@@ -7327,7 +8049,7 @@ Store.prototype.close = function (cb) {
 module.exports = Store
 
 }).call(this,require('_process'))
-},{"_process":62,"readable-stream":40}],30:[function(require,module,exports){
+},{"_process":63,"readable-stream":41}],31:[function(require,module,exports){
 'use strict'
 
 /**
@@ -7378,7 +8100,7 @@ module.exports = {
   validateTopics: validateTopics
 }
 
-},{}],31:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 /**
  * Helpers.
  */
@@ -7505,7 +8227,7 @@ function plural(ms, n, name) {
   return Math.ceil(ms / n) + ' ' + name + 's';
 }
 
-},{}],32:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 var wrappy = require('wrappy')
 module.exports = wrappy(once)
 
@@ -7528,7 +8250,7 @@ function once (fn) {
   return f
 }
 
-},{"wrappy":53}],33:[function(require,module,exports){
+},{"wrappy":54}],34:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -7575,9 +8297,9 @@ function nextTick(fn, arg1, arg2, arg3) {
 }
 
 }).call(this,require('_process'))
-},{"_process":62}],34:[function(require,module,exports){
+},{"_process":63}],35:[function(require,module,exports){
 arguments[4][5][0].apply(exports,arguments)
-},{"./_stream_readable":36,"./_stream_writable":38,"core-util-is":9,"dup":5,"inherits":15,"process-nextick-args":33}],35:[function(require,module,exports){
+},{"./_stream_readable":37,"./_stream_writable":39,"core-util-is":9,"dup":5,"inherits":16,"process-nextick-args":34}],36:[function(require,module,exports){
 // a passthrough stream.
 // basically just the most minimal sort of Transform stream.
 // Every written chunk gets output as-is.
@@ -7604,7 +8326,7 @@ function PassThrough(options) {
 PassThrough.prototype._transform = function (chunk, encoding, cb) {
   cb(null, chunk);
 };
-},{"./_stream_transform":37,"core-util-is":9,"inherits":15}],36:[function(require,module,exports){
+},{"./_stream_transform":38,"core-util-is":9,"inherits":16}],37:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -8544,7 +9266,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'))
-},{"./_stream_duplex":34,"./internal/streams/BufferList":39,"_process":62,"buffer":57,"buffer-shims":8,"core-util-is":9,"events":58,"inherits":15,"isarray":16,"process-nextick-args":33,"string_decoder/":43,"util":56}],37:[function(require,module,exports){
+},{"./_stream_duplex":35,"./internal/streams/BufferList":40,"_process":63,"buffer":58,"buffer-shims":8,"core-util-is":9,"events":59,"inherits":16,"isarray":17,"process-nextick-args":34,"string_decoder/":44,"util":57}],38:[function(require,module,exports){
 // a transform stream is a readable/writable stream where you do
 // something with the data.  Sometimes it's called a "filter",
 // but that's not a great name for it, since that implies a thing where
@@ -8725,7 +9447,7 @@ function done(stream, er) {
 
   return stream.push(null);
 }
-},{"./_stream_duplex":34,"core-util-is":9,"inherits":15}],38:[function(require,module,exports){
+},{"./_stream_duplex":35,"core-util-is":9,"inherits":16}],39:[function(require,module,exports){
 (function (process){
 // A bit simpler than readable streams.
 // Implement an async ._write(chunk, encoding, cb), and it'll handle all
@@ -9254,7 +9976,7 @@ function CorkedRequest(state) {
   };
 }
 }).call(this,require('_process'))
-},{"./_stream_duplex":34,"_process":62,"buffer":57,"buffer-shims":8,"core-util-is":9,"events":58,"inherits":15,"process-nextick-args":33,"util-deprecate":50}],39:[function(require,module,exports){
+},{"./_stream_duplex":35,"_process":63,"buffer":58,"buffer-shims":8,"core-util-is":9,"events":59,"inherits":16,"process-nextick-args":34,"util-deprecate":51}],40:[function(require,module,exports){
 'use strict';
 
 var Buffer = require('buffer').Buffer;
@@ -9319,7 +10041,7 @@ BufferList.prototype.concat = function (n) {
   }
   return ret;
 };
-},{"buffer":57,"buffer-shims":8}],40:[function(require,module,exports){
+},{"buffer":58,"buffer-shims":8}],41:[function(require,module,exports){
 (function (process){
 var Stream = (function (){
   try {
@@ -9339,7 +10061,7 @@ if (!process.browser && process.env.READABLE_STREAM === 'disable' && Stream) {
 }
 
 }).call(this,require('_process'))
-},{"./lib/_stream_duplex.js":34,"./lib/_stream_passthrough.js":35,"./lib/_stream_readable.js":36,"./lib/_stream_transform.js":37,"./lib/_stream_writable.js":38,"_process":62}],41:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":35,"./lib/_stream_passthrough.js":36,"./lib/_stream_readable.js":37,"./lib/_stream_transform.js":38,"./lib/_stream_writable.js":39,"_process":63}],42:[function(require,module,exports){
 'use strict'
 
 function ReInterval (callback, interval, args) {
@@ -9398,7 +10120,7 @@ function reInterval () {
 
 module.exports = reInterval;
 
-},{}],42:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 module.exports = shift
 
 function shift (stream) {
@@ -9420,7 +10142,7 @@ function getStateLength (state) {
   return state.length
 }
 
-},{}],43:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -9643,11 +10365,11 @@ function base64DetectIncompleteChar(buffer) {
   this.charLength = this.charReceived ? 3 : 0;
 }
 
-},{"buffer":57}],44:[function(require,module,exports){
+},{"buffer":58}],45:[function(require,module,exports){
 arguments[4][5][0].apply(exports,arguments)
-},{"./_stream_readable":45,"./_stream_writable":47,"core-util-is":9,"dup":5,"inherits":15,"process-nextick-args":33}],45:[function(require,module,exports){
+},{"./_stream_readable":46,"./_stream_writable":48,"core-util-is":9,"dup":5,"inherits":16,"process-nextick-args":34}],46:[function(require,module,exports){
 arguments[4][6][0].apply(exports,arguments)
-},{"./_stream_duplex":44,"_process":62,"buffer":57,"core-util-is":9,"dup":6,"events":58,"inherits":15,"isarray":16,"process-nextick-args":33,"string_decoder/":43,"util":56}],46:[function(require,module,exports){
+},{"./_stream_duplex":45,"_process":63,"buffer":58,"core-util-is":9,"dup":6,"events":59,"inherits":16,"isarray":17,"process-nextick-args":34,"string_decoder/":44,"util":57}],47:[function(require,module,exports){
 // a transform stream is a readable/writable stream where you do
 // something with the data.  Sometimes it's called a "filter",
 // but that's not a great name for it, since that implies a thing where
@@ -9828,12 +10550,12 @@ function done(stream, er) {
 
   return stream.push(null);
 }
-},{"./_stream_duplex":44,"core-util-is":9,"inherits":15}],47:[function(require,module,exports){
+},{"./_stream_duplex":45,"core-util-is":9,"inherits":16}],48:[function(require,module,exports){
 arguments[4][7][0].apply(exports,arguments)
-},{"./_stream_duplex":44,"_process":62,"buffer":57,"core-util-is":9,"dup":7,"events":58,"inherits":15,"process-nextick-args":33,"util-deprecate":50}],48:[function(require,module,exports){
+},{"./_stream_duplex":45,"_process":63,"buffer":58,"core-util-is":9,"dup":7,"events":59,"inherits":16,"process-nextick-args":34,"util-deprecate":51}],49:[function(require,module,exports){
 module.exports = require("./lib/_stream_transform.js")
 
-},{"./lib/_stream_transform.js":46}],49:[function(require,module,exports){
+},{"./lib/_stream_transform.js":47}],50:[function(require,module,exports){
 (function (process){
 var Transform = require('readable-stream/transform')
   , inherits  = require('util').inherits
@@ -9933,7 +10655,7 @@ module.exports.obj = through2(function (options, transform, flush) {
 })
 
 }).call(this,require('_process'))
-},{"_process":62,"readable-stream/transform":48,"util":71,"xtend":54}],50:[function(require,module,exports){
+},{"_process":63,"readable-stream/transform":49,"util":72,"xtend":55}],51:[function(require,module,exports){
 (function (global){
 
 /**
@@ -10004,7 +10726,7 @@ function config (name) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],51:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 (function (process,global,Buffer){
 var through = require('through2')
 var duplexify = require('duplexify')
@@ -10125,7 +10847,7 @@ function WebSocketStream(target, protocols, options) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"_process":62,"buffer":57,"duplexify":12,"through2":49,"ws":52}],52:[function(require,module,exports){
+},{"_process":63,"buffer":58,"duplexify":12,"through2":50,"ws":53}],53:[function(require,module,exports){
 
 var ws = null
 
@@ -10139,7 +10861,7 @@ if (typeof WebSocket !== 'undefined') {
 
 module.exports = ws
 
-},{}],53:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 // Returns a wrapper function that returns a wrapped callback
 // The wrapper function should do some stuff, and return a
 // presumably different callback function.
@@ -10174,7 +10896,7 @@ function wrappy (fn, cb) {
   }
 }
 
-},{}],54:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 module.exports = extend
 
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -10195,7 +10917,7 @@ function extend() {
     return target
 }
 
-},{}],55:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -10311,9 +11033,9 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],56:[function(require,module,exports){
-
 },{}],57:[function(require,module,exports){
+
+},{}],58:[function(require,module,exports){
 (function (global){
 /*!
  * The buffer module from node.js, for the browser.
@@ -12106,7 +12828,7 @@ function isnan (val) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"base64-js":55,"ieee754":59,"isarray":61}],58:[function(require,module,exports){
+},{"base64-js":56,"ieee754":60,"isarray":62}],59:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -12410,7 +13132,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],59:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -12496,7 +13218,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],60:[function(require,module,exports){
+},{}],61:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -12519,9 +13241,9 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],61:[function(require,module,exports){
-arguments[4][16][0].apply(exports,arguments)
-},{"dup":16}],62:[function(require,module,exports){
+},{}],62:[function(require,module,exports){
+arguments[4][17][0].apply(exports,arguments)
+},{"dup":17}],63:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -12703,7 +13425,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],63:[function(require,module,exports){
+},{}],64:[function(require,module,exports){
 (function (global){
 /*! https://mths.be/punycode v1.4.1 by @mathias */
 ;(function(root) {
@@ -13240,7 +13962,7 @@ process.umask = function() { return 0; };
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],64:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -13326,7 +14048,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],65:[function(require,module,exports){
+},{}],66:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -13413,13 +14135,13 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],66:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":64,"./encode":65}],67:[function(require,module,exports){
+},{"./decode":65,"./encode":66}],68:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -14153,7 +14875,7 @@ Url.prototype.parseHost = function() {
   if (host) this.hostname = host;
 };
 
-},{"./util":68,"punycode":63,"querystring":66}],68:[function(require,module,exports){
+},{"./util":69,"punycode":64,"querystring":67}],69:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -14171,16 +14893,16 @@ module.exports = {
   }
 };
 
-},{}],69:[function(require,module,exports){
-arguments[4][15][0].apply(exports,arguments)
-},{"dup":15}],70:[function(require,module,exports){
+},{}],70:[function(require,module,exports){
+arguments[4][16][0].apply(exports,arguments)
+},{"dup":16}],71:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],71:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -14770,5 +15492,5 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":70,"_process":62,"inherits":69}]},{},[2])(2)
+},{"./support/isBuffer":71,"_process":63,"inherits":70}]},{},[2])(2)
 });

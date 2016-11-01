@@ -132,17 +132,17 @@ clientB.disconnect()
 clientA.disconnect(&#39;client-b&#39;)
   .then(..)</code></pre>
 <h2 id="events">Events</h2>
-<h3 id="broker-connect">broker-connect</h3>
+<h3 id="brokerconnect">broker.connect</h3>
 <p>fired when client connects to broker</p>
-<h3 id="client-connect">client-connect</h3>
+<h3 id="clientconnect">client.connect</h3>
 <p>fired when a client connects</p>
 <p>Arguments:</p>
 <ul>
 <li>string <strong>clientId</strong> the client id of the connected client</li>
 </ul>
 <p>Example:</p>
-<pre><code>client.on(&#39;client-connect&#39;, function (clientId) {
-  log(&#39;on.client-connect &#39; + clientId);
+<pre><code>client.on(&#39;client.connect&#39;, function (clientId) {
+  log(&#39;on.client.connect &#39; + clientId);
 });</code></pre>
 <h2 id="include-client-into-web-page">include client into web page</h2>
 <pre><code>&lt;script src=&quot;../build/mqtt-reqres-browser.js&quot;&gt;&lt;/script&gt;

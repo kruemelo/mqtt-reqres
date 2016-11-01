@@ -203,12 +203,12 @@ clientA.disconnect('client-b')
 ## Events
 
 
-### broker-connect
+### broker.connect
 
 fired when client connects to broker
 
 
-### client-connect
+### client.connect
 
 fired when a client connects
 
@@ -219,8 +219,8 @@ Arguments:
 Example:
 
 ```
-client.on('client-connect', function (clientId) {
-  log('on.client-connect ' + clientId);
+client.on('client.connect', function (clientId) {
+  log('on.client.connect ' + clientId);
 });
 ```
 

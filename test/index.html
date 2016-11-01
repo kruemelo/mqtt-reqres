@@ -110,15 +110,15 @@
       });
 
 
-      client.on('broker-connect', function () {
-        log('on.broker-connect with client id ' + this.clientId);
+      client.on('broker.connect', function () {
+        log('on.broker.connect with client id ' + this.clientId);
         document.querySelector('#myClientId').value = this.clientId;
         updateConnectedClientsList();
       });
 
 
-      client.on('client-connect', function (clientId) {
-        log('on.client-connect ' + clientId);
+      client.on('client.connect', function (clientId) {
+        log('on.client.connect ' + clientId);
         updateConnectedClientsList();
       });
 
