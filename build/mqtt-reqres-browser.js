@@ -730,15 +730,18 @@ module.exports = function () {
     //   '%s sendAck(%s, %s, toId %s)', this.clientId,
     //   connection.clientId, ackMessageName, toId
     // );
+    var msgStr;
 
     try {
-      return this.mqttPublish(connection, ackMessageName, JSON.stringify({
+      msgStr = JSON.stringify({
         toId: toId
-      }));
+      });
     }
     catch (e) {
       return Promise.reject(e);
     }
+
+    return this.mqttPublish(connection, ackMessageName, msgStr);
   };  // sendAck
 
 
@@ -1867,8 +1870,13 @@ module.exports = function () {
       }
       else if ('function' === typeof self.fnGetSharedSecret) {
         self.fnGetSharedSecret(connection.clientId, function (sharedSecret) {
-          connection.sharedSecret = sharedSecret;
-          resolve(sharedSecret);
+          if (!sharedSecret) {
+            reject();
+          }
+          else {
+            connection.sharedSecret = sharedSecret;
+            resolve(sharedSecret);
+          }
         });
       }
       else {
