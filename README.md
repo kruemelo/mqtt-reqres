@@ -183,7 +183,7 @@ send ping request to client. if not yet connected, connects to client.
 
 **toClientId** string, optional. if set, connects to a client with the specified id. if omitted only connects to the broker.
 
-**returns** Promise resolved, when 'ping-ack' was received.
+**returns** Promise resolved, when `ping-ack` was received, reject on timeout.
 
 
 ### disconnect([fromClientId])

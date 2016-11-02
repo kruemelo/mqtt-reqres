@@ -889,11 +889,7 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
     <span class="hljs-keyword">if</span> (MqttReqRes.isConnected(connection)) {
       <span class="hljs-keyword">return</span> <span class="hljs-built_in">Promise</span>.resolve();
     }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>connect to broker</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.connectToBroker()
-      .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>subscribe to connect topic</p></div></div><div class="code"><div class="wrapper">        <span class="hljs-keyword">return</span> self.subscribeConnect();
-      })
       .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
-
-        self.emit(<span class="hljs-string">'broker.connect'</span>);          
 
         <span class="hljs-keyword">if</span> (toClientId) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>connect to other client when toClientId is set</p></div></div><div class="code"><div class="wrapper">          <span class="hljs-keyword">return</span> self.connectToClient(toClientId, sharedSecret);
         }
@@ -932,8 +928,12 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
       <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">onBrokerConnect</span> (<span class="hljs-params"></span>) </span>{
         connectSuccess = <span class="hljs-literal">true</span>;
         self.removeListener(<span class="hljs-string">'connect'</span>, onConnect);
-        self.removeListener(<span class="hljs-string">'_broker-connect'</span>, onBrokerConnect);
-        resolve();
+        self.removeListener(<span class="hljs-string">'_broker-connect'</span>, onBrokerConnect);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>subscribe to connect topic</p></div></div><div class="code"><div class="wrapper">        self.subscribeConnect()
+          .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+             self.emit(<span class="hljs-string">'broker.connect'</span>);
+             resolve();
+          })
+          .catch(reject);
       }
 
       self.once(<span class="hljs-string">'_broker-connect'</span>, onBrokerConnect);

@@ -1293,12 +1293,6 @@ module.exports = function () {
     // connect to broker
     return this.connectToBroker()
       .then(function () {
-        // subscribe to connect topic
-        return self.subscribeConnect();
-      })
-      .then(function () {
-
-        self.emit('broker.connect');          
 
         if (toClientId) {
           // connect to other client when toClientId is set
@@ -1357,7 +1351,14 @@ module.exports = function () {
         connectSuccess = true;
         self.removeListener('connect', onConnect);
         self.removeListener('_broker-connect', onBrokerConnect);
-        resolve();
+
+        // subscribe to connect topic
+        self.subscribeConnect()
+          .then(function () {
+             self.emit('broker.connect');
+             resolve();
+          })
+          .catch(reject);
       }
 
       self.once('_broker-connect', onBrokerConnect);

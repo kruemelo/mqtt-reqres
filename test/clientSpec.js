@@ -189,7 +189,7 @@ describe('MqttReqResClient', () => {
   });
 
 
-  it('should request ping and ack', done => {
+  it('should ping and ack', done => {
 
     var bReceivedPingRequest = false;
 
