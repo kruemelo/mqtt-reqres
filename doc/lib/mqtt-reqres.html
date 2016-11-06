@@ -109,7 +109,12 @@
         B: response-end
         A: response-end-ack</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="export-module">export module</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-built_in">module</span>.exports = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
 <span class="hljs-pi">
-  'use strict'</span>;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="dependencies">dependencies</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  <span class="hljs-keyword">var</span> mqtt = <span class="hljs-built_in">require</span>(<span class="hljs-string">'mqtt'</span>);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>var EventEmitter = require(&#39;events&#39;);</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">var</span> EventEmitter = <span class="hljs-built_in">require</span>(<span class="hljs-string">'eventemitter2'</span>);
+  'use strict'</span>;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="dependencies">dependencies</h3></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>this is to browserify node Buffer </p>
+<p>when browserify, use Node &gt;=5.10.0 to get the correct version</p>
+<p>Buffer.from()
+see:  <a href="https://nodejs.org/docs/latest-v5.x/api/buffer.html">https://nodejs.org/docs/latest-v5.x/api/buffer.html</a></p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">var</span> Buffer = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>).Buffer;
+
+  <span class="hljs-keyword">var</span> mqtt = <span class="hljs-built_in">require</span>(<span class="hljs-string">'mqtt'</span>);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>var EventEmitter = require(&#39;events&#39;);</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">var</span> EventEmitter = <span class="hljs-built_in">require</span>(<span class="hljs-string">'eventemitter2'</span>);
   <span class="hljs-keyword">var</span> CryptoJS = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./crypto-js/cryptojs-module.js'</span>);
   <span class="hljs-keyword">var</span> debug = <span class="hljs-built_in">require</span>(<span class="hljs-string">'debug'</span>)(<span class="hljs-string">'mqtt-reqres'</span>);
   <span class="hljs-keyword">var</span> noop = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{};
@@ -155,7 +160,7 @@
 
     <span class="hljs-keyword">this</span>.initialize(options);
   }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>MqttReqRes extends EventEmitter</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype = <span class="hljs-built_in">Object</span>.create(EventEmitter.prototype);
-  MqttReqRes.prototype.constructor = MqttReqRes;  </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>expose EventEmitter</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.EventEmitter = EventEmitter;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqresrandomstringlength">MqttReqRes.randomString(length)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.randomString = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">length</span>) </span>{
+  MqttReqRes.prototype.constructor = MqttReqRes;  </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>expose EventEmitter</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.EventEmitter = EventEmitter;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>expose node Buffer</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.Buffer = Buffer;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqresrandomstringlength">MqttReqRes.randomString(length)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.randomString = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">length</span>) </span>{
       
     <span class="hljs-keyword">var</span> validChars = <span class="hljs-string">'0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'</span>,
       validCharsLength = validChars.length,
@@ -250,7 +255,7 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
       <span class="hljs-keyword">return</span> MqttReqRes.isConnected(connection);
     });
   };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="streamsend-connection-messageid-msgtargetproperty-payload">streamSend (connection, messageId, msgTargetProperty, payload)</h3>
-<p>send a string|object|ArrayBuffer payload within an existing message</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype.streamSend = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, messageId, msgTargetProperty, payload</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(
+<p>send a string|object|Buffer payload within an existing message</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype.streamSend = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, messageId, msgTargetProperty, payload</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(
   &#39;%s streamSend(%s, %s, %s)&#39;, 
   this.clientId, connection.clientId, messageId, msgTargetProperty, payload
 );</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
@@ -258,7 +263,7 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
       payloadLength,
       streamId = MqttReqRes.randomString(STREAM_ID_LENGTH);
     
-    <span class="hljs-keyword">if</span> (payload <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">ArrayBuffer</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>ArrayBuffer</p></div></div><div class="code"><div class="wrapper">      type = <span class="hljs-string">'ArrayBuffer'</span>;
+    <span class="hljs-keyword">if</span> (payload <span class="hljs-keyword">instanceof</span> Buffer) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Buffer</p></div></div><div class="code"><div class="wrapper">      type = <span class="hljs-string">'Buffer'</span>;
     }
     <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (payload === <span class="hljs-literal">null</span>) {
       type = <span class="hljs-string">'null'</span>;
@@ -279,8 +284,7 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
       payload = <span class="hljs-string">'null'</span>;
     }
 
-    payloadLength = (type === <span class="hljs-string">'ArrayBuffer'</span> ? 
-      payload.byteLength : payload.length);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>_mqtt-message-stream: message-id, stream-id, message-target-property</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sendStreamMessage</span> (<span class="hljs-params"></span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s sendStreamMessage() to %s&#39;, self.clientId, connection.clientId);</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">try</span> {
+    payloadLength = payload.length;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>_mqtt-message-stream: message-id, stream-id, message-target-property</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sendStreamMessage</span> (<span class="hljs-params"></span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s sendStreamMessage() to %s&#39;, self.clientId, connection.clientId);</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">try</span> {
         <span class="hljs-keyword">return</span> self.mqttPublish(connection, <span class="hljs-string">'stream'</span>, <span class="hljs-built_in">JSON</span>.stringify({
           messageId: messageId,
           streamId: streamId,
@@ -313,7 +317,7 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
         <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">nextChunk</span> (<span class="hljs-params"></span>) </span>{
 
           <span class="hljs-keyword">var</span> chunkStr,
-            chunkUint8Array;
+            chunkBuffer;
 
           chunkSize = remainingLength &gt;= MAX_CHUNK_SIZE ?
             MAX_CHUNK_SIZE : remainingLength;
@@ -324,10 +328,9 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
   chunkno,
   chunkSize,
   eos
-);</p></div></div><div class="code"><div class="wrapper">          <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'ArrayBuffer'</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>chunk as Uint8Array
-new Uint8Array(buffer [, byteOffset [, length]]);</p></div></div><div class="code"><div class="wrapper">            chunkUint8Array = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Uint8Array</span>(payload, offset, chunkSize);
+);</p></div></div><div class="code"><div class="wrapper">          <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'Buffer'</span>) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>chunk </p></div></div><div class="code"><div class="wrapper">            chunkBuffer = payload.slice(offset, offset + chunkSize); 
 
-            chunkStr = chunkUint8Array.join(<span class="hljs-string">','</span>);
+            chunkStr = chunkBuffer.join(<span class="hljs-string">','</span>);
           }
           <span class="hljs-keyword">else</span> {
             chunkStr = payload.substr(offset, chunkSize);
@@ -498,7 +501,7 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
         reject(e);
       }
     });
-  };  <span class="hljs-comment">// mqttPublish</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="requeststring-toclientid-stringobjectarraybuffer-payload-object-meta">request(string toClientId, string|object|ArrayBuffer payload, object meta)</h3>
+  };  <span class="hljs-comment">// mqttPublish</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="requeststring-toclientid-stringobjectbuffer-payload-object-meta">request(string toClientId, string|object|Buffer payload, object meta)</h3>
 <p>A: request</p></div></div><div class="code"><div class="wrapper">  MqttReqRes.prototype.request = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">toClientId, payload, meta</span>) </span>{
 
     debug(<span class="hljs-string">'%s request(%s)'</span>, <span class="hljs-keyword">this</span>.clientId, toClientId);
@@ -653,7 +656,7 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
 
         chunkData = MqttReqRes.decrypt(mqttChunkMessage.payload, connection.sharedSecret);
 
-        <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'ArrayBuffer'</span>) {
+        <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'Buffer'</span>) {
          
           <span class="hljs-keyword">if</span> (streamResult === <span class="hljs-literal">null</span>) {
             streamResult = [];
@@ -714,8 +717,8 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
         
         <span class="hljs-keyword">try</span> {
 
-          <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'ArrayBuffer'</span>) {
-            streamResult = <span class="hljs-built_in">Uint8Array</span>.from(streamResult).buffer;
+          <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'Buffer'</span>) {
+            streamResult = Buffer.from(streamResult);
           }
           <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'JSON'</span>) {
             streamResult = <span class="hljs-built_in">JSON</span>.parse(streamResult);
@@ -842,7 +845,7 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
     }
 
     <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>;
-  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="sendresponseobject-connection-string-respondtorequestid-stringobjectarraybuffer-payload-object-meta">sendResponse(object connection, string respondToRequestId, string|object|ArrayBuffer payload, object meta)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.sendResponse = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, respondToRequestId, payload, meta</span>) </span>{
+  };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="sendresponseobject-connection-string-respondtorequestid-stringobjectbuffer-payload-object-meta">sendResponse(object connection, string respondToRequestId, string|object|Buffer payload, object meta)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.sendResponse = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">connection, respondToRequestId, payload, meta</span>) </span>{
 
     debug(<span class="hljs-string">'%s sendResponse(%s, %s)'</span>, <span class="hljs-keyword">this</span>.clientId, connection.clientId, respondToRequestId);
 

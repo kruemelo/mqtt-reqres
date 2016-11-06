@@ -84,6 +84,22 @@ describe(<span class="hljs-string">'MqttReqResClient'</span>, () =&gt; {
   });
 
 
+  it(<span class="hljs-string">'should expose node Buffer'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p><a href="https://nodejs.org/docs/latest-v5.x/api/buffer.html#buffer_buffers_and_character_encodings">https://nodejs.org/docs/latest-v5.x/api/buffer.html#buffer_buffers_and_character_encodings</a></p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">const</span> str = <span class="hljs-string">'tést'</span>;
+    <span class="hljs-keyword">const</span> arrayBuffer = <span class="hljs-built_in">Uint8Array</span>.from([<span class="hljs-number">1</span>,<span class="hljs-number">2</span>,<span class="hljs-number">4</span>]).buffer;
+    
+    <span class="hljs-keyword">var</span> buf = Client.Buffer.from(str, <span class="hljs-string">'utf8'</span>);
+
+    assert.instanceOf(buf, Buffer);
+
+    assert.strictEqual(buf.toString(<span class="hljs-string">'utf8'</span>), str);
+    assert.strictEqual(buf.toString(<span class="hljs-string">'base64'</span>), <span class="hljs-string">'dMOpc3Q='</span>);
+
+    buf = Client.Buffer.from(arrayBuffer);
+
+    assert.deepEqual(buf.buffer, arrayBuffer);
+  });
+
+
   it(<span class="hljs-string">'should connect to broker'</span>, done =&gt; {
 
     assert(Client);
@@ -262,15 +278,14 @@ clientA.connect()
   });
 
 
-  it(<span class="hljs-string">'should request ArrayBuffer and respond string'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
+  it(<span class="hljs-string">'should request Buffer and respond string'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
 
     <span class="hljs-keyword">this</span>.timeout(<span class="hljs-number">7000</span>);
 
     <span class="hljs-keyword">var</span> filenameSend = <span class="hljs-string">'github-git-cheat-sheet.pdf'</span>, <span class="hljs-comment">// 'github-timeout.png' 'github-git-cheat-sheet.pdf' 'npm.svg', 'npm.png'</span>
-      ui8Send = <span class="hljs-built_in">Uint8Array</span>.from(fs.readFileSync(<span class="hljs-string">'./test/fixtures/'</span> + filenameSend)),
-      arrayBufferSend = ui8Send.buffer;
+      bufferSend = fs.readFileSync(<span class="hljs-string">'./test/fixtures/'</span> + filenameSend);
 
-    assert(arrayBufferSend <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">ArrayBuffer</span>);
+    assert.instanceOf(bufferSend, Buffer);
 
     clientA = newClient(clientAId);
 
@@ -286,25 +301,17 @@ clientA.connect()
 
       <span class="hljs-keyword">try</span> {
 
-        debug(<span class="hljs-string">'ClientB.on request, payload byteLength %d'</span>, req.payload.byteLength);
+        debug(<span class="hljs-string">'ClientB.on request, payload length %d'</span>, req.payload.length);
 
-        assert.strictEqual(req.type, <span class="hljs-string">'ArrayBuffer'</span>);
-        assert.strictEqual(req.payload.byteLength, arrayBufferSend.byteLength);
+        assert.strictEqual(req.type, <span class="hljs-string">'Buffer'</span>);
+        assert.strictEqual(req.payload.length, bufferSend.length);
 
         assert.deepEqual(
-          <span class="hljs-keyword">new</span> <span class="hljs-built_in">Uint8Array</span>(req.payload, <span class="hljs-number">0</span>, req.payload.byteLength), 
-          ui8Send
+          req.payload.buffer,
+          bufferSend.buffer
         );
-        </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>example: writing buffer to fs
-fs.writeFileSync(
-  os.tmpdir() + &#39;/&#39; + filenameSend,
-  new Buffer(req.payload),
-  {encoding: null}
-);</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>example: compare ArrayBuffer payload and file content
-assert.deepEqual(
-  new Uint8Array(req.payload, 0, req.payload.byteLength), 
-  Uint8Array.from(fs.readFileSync(&#39;./test/fixtures/&#39; + filenameSend))
-);</p></div></div><div class="code"><div class="wrapper">        res.send(<span class="hljs-string">'bar'</span>);
+
+        res.send(<span class="hljs-string">'bar'</span>);
       }
       <span class="hljs-keyword">catch</span> (e) {
         <span class="hljs-built_in">console</span>.error(e);
@@ -314,7 +321,7 @@ assert.deepEqual(
 
     clientB.connect()
       .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-        <span class="hljs-keyword">return</span> clientA.request(clientBId, ui8Send.buffer);
+        <span class="hljs-keyword">return</span> clientA.request(clientBId, bufferSend);
       })
       .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">res</span>) </span>{
         assert.strictEqual(res.type, <span class="hljs-string">'string'</span>);
@@ -325,13 +332,12 @@ assert.deepEqual(
   });
 
 
-  it(<span class="hljs-string">'should request string and respond ArrayBuffer'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
+  it(<span class="hljs-string">'should request string and respond Buffer'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
 
     <span class="hljs-keyword">this</span>.timeout(<span class="hljs-number">5000</span>);
 
     <span class="hljs-keyword">var</span> filenameRespond = <span class="hljs-string">'npm.svg'</span>, <span class="hljs-comment">// 'github-timeout.png' 'github-git-cheat-sheet.pdf' 'npm.svg', 'npm.png'</span>
-      ui8Respond = <span class="hljs-built_in">Uint8Array</span>.from(fs.readFileSync(<span class="hljs-string">'./test/fixtures/'</span> + filenameRespond)),
-      arrayBufferRespond = ui8Respond.buffer;
+      bufferRespond = fs.readFileSync(<span class="hljs-string">'./test/fixtures/'</span> + filenameRespond);
 
     clientA = newClient(clientAId);
 
@@ -348,7 +354,7 @@ assert.deepEqual(
         debug(<span class="hljs-string">'ClientB.on request, payload length %d'</span>, req.payload.length);
 
         assert.strictEqual(req.type, <span class="hljs-string">'string'</span>);
-        assert.strictEqual(req.payload, <span class="hljs-string">'foo'</span>);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>now respond with file</p></div></div><div class="code"><div class="wrapper">        res.send(arrayBufferRespond);
+        assert.strictEqual(req.payload, <span class="hljs-string">'foo'</span>);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>now respond with file</p></div></div><div class="code"><div class="wrapper">        res.send(bufferRespond);
       }
       <span class="hljs-keyword">catch</span>(e) {
         done(e);
@@ -361,14 +367,14 @@ assert.deepEqual(
       })
       .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">res</span>) </span>{
 
-        debug(<span class="hljs-string">'clientA got response from cientB, res byteLength %d'</span>, res.payload.byteLength);
+        debug(<span class="hljs-string">'clientA got response from cientB, res length %d'</span>, res.payload.length);
 
-        assert.strictEqual(res.type, <span class="hljs-string">'ArrayBuffer'</span>);
-        assert.strictEqual(res.payload.byteLength, arrayBufferRespond.byteLength);
+        assert.strictEqual(res.type, <span class="hljs-string">'Buffer'</span>);
+        assert.strictEqual(res.payload.length, bufferRespond.length);
 
         assert.deepEqual(
-          <span class="hljs-keyword">new</span> <span class="hljs-built_in">Uint8Array</span>(res.payload, <span class="hljs-number">0</span>, res.payload.byteLength), 
-          ui8Respond
+          res.payload.buffer,
+          bufferRespond.buffer
         );
 
         closeClients(clientA, clientB).then(() =&gt; done());

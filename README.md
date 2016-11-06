@@ -40,7 +40,7 @@ send a request to an other client.
 
 **toClientId** string, required. the receiver's client id
 
-**payload** string|object|ArrayBuffer, optional. the message string or object to be sent.
+**payload** string|object|Buffer, optional. the message string or object to be sent. for `Buffer` type see [Node docs](https://nodejs.org/docs/latest-v5.x/api/buffer.html)
 
 **meta** object, optional. an object to be sent additionaly.
 
@@ -54,8 +54,8 @@ clientA.request('client-b', 'hello!', {foo: 'bar'})
   .then(function (response) {
 
     /* called when received response 
-    response.type -> 'string', 'ArrayBuffer', 'JSON'
-    response.payload -> typeof string, ArrayBuffer or Object
+    response.type -> 'string', 'Buffer', 'JSON'
+    response.payload -> typeof string, Buffer or Object
     */
   })
   .catch(function (reason) {
@@ -71,7 +71,7 @@ defines a request handler callback function. The handler function is called inte
 
 **callback** function required; callback takes these arguments:
 
-- object **req** the request object with properties object `connection`, string `topic`, string `type`, string|object|ArrayBuffer `payload` and object `meta`
+- object **req** the request object with properties object `connection`, string `topic`, string `type`, string|object|Buffer `payload` and object `meta`
 - object **res** the response object with function `send()`
 
 use `res.send(message, meta)` to respond to the request with string|object `message` and optional meta data object.
@@ -84,8 +84,8 @@ respond with string "foo":
 clientB.onRequest(function (req, res) {
 
   /* called when received request 
-  req.type -> the payload data type 'string', 'ArrayBuffer', 'JSON'
-  req.payload -> typeof string, ArrayBuffer or Object
+  req.type -> the payload data type 'string', 'Buffer', 'JSON'
+  req.payload -> typeof string, Buffer or Object
   req.connection -> connection object
   req.topic -> string mqtt topic
   req.meta -> null|object meta object data
@@ -110,8 +110,9 @@ respond with file content
 ```
 clientB.onRequest(function (req, res) {
 
-  var arrayBufferRespond = Uint8Array.from(fs.readFileSync('filename')).buffer;
-  res.send(arrayBufferRespond);
+  var bufferRespond = fs.readFileSync('filename');
+
+  res.send(bufferRespond);
 });
 ```
 
@@ -252,6 +253,8 @@ client.on('client.connect', function (clientId) {
 ```
 
 ## use the client as a module
+
+requires node >= 5.10.0
 
 ```
 var MqttReqRes = require('mqtt-reqres');

@@ -23,7 +23,7 @@
 <h3 id="requesttoclientid-payload-meta">request(toClientId[, payload, meta])</h3>
 <p>send a request to an other client.</p>
 <p><strong>toClientId</strong> string, required. the receiver&#39;s client id</p>
-<p><strong>payload</strong> string|object|ArrayBuffer, optional. the message string or object to be sent.</p>
+<p><strong>payload</strong> string|object|Buffer, optional. the message string or object to be sent. for <code>Buffer</code> type see <a href="https://nodejs.org/docs/latest-v5.x/api/buffer.html">Node docs</a></p>
 <p><strong>meta</strong> object, optional. an object to be sent additionaly.</p>
 <p><strong>returns</strong> Promise which resolves to object <code>response</code></p>
 <p>Example:</p>
@@ -31,8 +31,8 @@
   .then(function (response) {
 
     /* called when received response 
-    response.type -&gt; &#39;string&#39;, &#39;ArrayBuffer&#39;, &#39;JSON&#39;
-    response.payload -&gt; typeof string, ArrayBuffer or Object
+    response.type -&gt; &#39;string&#39;, &#39;Buffer&#39;, &#39;JSON&#39;
+    response.payload -&gt; typeof string, Buffer or Object
     */
   })
   .catch(function (reason) {
@@ -43,7 +43,7 @@
 <p>defines a request handler callback function. The handler function is called internally on each request received from connected client.</p>
 <p><strong>callback</strong> function required; callback takes these arguments:</p>
 <ul>
-<li>object <strong>req</strong> the request object with properties object <code>connection</code>, string <code>topic</code>, string <code>type</code>, string|object|ArrayBuffer <code>payload</code> and object <code>meta</code></li>
+<li>object <strong>req</strong> the request object with properties object <code>connection</code>, string <code>topic</code>, string <code>type</code>, string|object|Buffer <code>payload</code> and object <code>meta</code></li>
 <li>object <strong>res</strong> the response object with function <code>send()</code></li>
 </ul>
 <p>use <code>res.send(message, meta)</code> to respond to the request with string|object <code>message</code> and optional meta data object.</p>
@@ -52,8 +52,8 @@
 <pre><code>clientB.onRequest(function (req, res) {
 
   /* called when received request 
-  req.type -&gt; the payload data type &#39;string&#39;, &#39;ArrayBuffer&#39;, &#39;JSON&#39;
-  req.payload -&gt; typeof string, ArrayBuffer or Object
+  req.type -&gt; the payload data type &#39;string&#39;, &#39;Buffer&#39;, &#39;JSON&#39;
+  req.payload -&gt; typeof string, Buffer or Object
   req.connection -&gt; connection object
   req.topic -&gt; string mqtt topic
   req.meta -&gt; null|object meta object data
@@ -70,8 +70,9 @@
 <p>respond with file content</p>
 <pre><code>clientB.onRequest(function (req, res) {
 
-  var arrayBufferRespond = Uint8Array.from(fs.readFileSync(&#39;filename&#39;)).buffer;
-  res.send(arrayBufferRespond);
+  var bufferRespond = fs.readFileSync(&#39;filename&#39;);
+
+  res.send(bufferRespond);
 });</code></pre>
 <h3 id="sharedsecretcallback">sharedSecret(callback)</h3>
 <p>defines a connection-specific callback function to retrieve the shared secret required to connect. The callback function will be called internally on incoming as well as outgoing connection requests.</p>
@@ -164,6 +165,7 @@ clientA.disconnect(&#39;client-b&#39;)
   ..  
 &lt;/script&gt;</code></pre>
 <h2 id="use-the-client-as-a-module">use the client as a module</h2>
+<p>requires node &gt;= 5.10.0</p>
 <pre><code>var MqttReqRes = require(&#39;mqtt-reqres&#39;);</code></pre>
 <h2 id="test">test</h2>
 <p>runs mocha specs in /test</p>

@@ -1,6 +1,6 @@
 {
   "name": "mqtt-reqres",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "mqtt request/response client",
   "main": "./lib/mqtt-reqres.js",
   "scripts": {
@@ -18,6 +18,10 @@
   "repository": {
     "type": "git",
     "url": "git://github.com/kruemelo/mqtt-reqres.git"
+  },
+  "engines": { 
+    "node": ">=5.12.0",
+    "npm": "3.8.6"
   },
   "dependencies": {
     "eventemitter2": "^2.1.3",

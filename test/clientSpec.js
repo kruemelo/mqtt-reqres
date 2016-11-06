@@ -89,6 +89,26 @@ describe('MqttReqResClient', () => {
   });
 
 
+  it('should expose node Buffer', function () {
+
+    // https://nodejs.org/docs/latest-v5.x/api/buffer.html#buffer_buffers_and_character_encodings
+
+    const str = 'tést';
+    const arrayBuffer = Uint8Array.from([1,2,4]).buffer;
+    
+    var buf = Client.Buffer.from(str, 'utf8');
+
+    assert.instanceOf(buf, Buffer);
+
+    assert.strictEqual(buf.toString('utf8'), str);
+    assert.strictEqual(buf.toString('base64'), 'dMOpc3Q=');
+
+    buf = Client.Buffer.from(arrayBuffer);
+
+    assert.deepEqual(buf.buffer, arrayBuffer);
+  });
+
+
   it('should connect to broker', done => {
 
     assert(Client);
@@ -283,15 +303,14 @@ describe('MqttReqResClient', () => {
   });
 
 
-  it('should request ArrayBuffer and respond string', function (done) {
+  it('should request Buffer and respond string', function (done) {
 
     this.timeout(7000);
 
     var filenameSend = 'github-git-cheat-sheet.pdf', // 'github-timeout.png' 'github-git-cheat-sheet.pdf' 'npm.svg', 'npm.png'
-      ui8Send = Uint8Array.from(fs.readFileSync('./test/fixtures/' + filenameSend)),
-      arrayBufferSend = ui8Send.buffer;
+      bufferSend = fs.readFileSync('./test/fixtures/' + filenameSend);
 
-    assert(arrayBufferSend instanceof ArrayBuffer);
+    assert.instanceOf(bufferSend, Buffer);
 
     clientA = newClient(clientAId);
 
@@ -310,28 +329,15 @@ describe('MqttReqResClient', () => {
 
       try {
 
-        debug('ClientB.on request, payload byteLength %d', req.payload.byteLength);
+        debug('ClientB.on request, payload length %d', req.payload.length);
 
-        assert.strictEqual(req.type, 'ArrayBuffer');
-        assert.strictEqual(req.payload.byteLength, arrayBufferSend.byteLength);
+        assert.strictEqual(req.type, 'Buffer');
+        assert.strictEqual(req.payload.length, bufferSend.length);
 
         assert.deepEqual(
-          new Uint8Array(req.payload, 0, req.payload.byteLength), 
-          ui8Send
+          req.payload.buffer,
+          bufferSend.buffer
         );
-        
-        // example: writing buffer to fs
-        // fs.writeFileSync(
-        //   os.tmpdir() + '/' + filenameSend,
-        //   new Buffer(req.payload),
-        //   {encoding: null}
-        // );
-
-        // example: compare ArrayBuffer payload and file content
-        // assert.deepEqual(
-        //   new Uint8Array(req.payload, 0, req.payload.byteLength), 
-        //   Uint8Array.from(fs.readFileSync('./test/fixtures/' + filenameSend))
-        // );
 
         res.send('bar');
       }
@@ -343,7 +349,7 @@ describe('MqttReqResClient', () => {
 
     clientB.connect()
       .then(function() {
-        return clientA.request(clientBId, ui8Send.buffer);
+        return clientA.request(clientBId, bufferSend);
       })
       .then(function (res) {
         assert.strictEqual(res.type, 'string');
@@ -354,13 +360,12 @@ describe('MqttReqResClient', () => {
   });
 
 
-  it('should request string and respond ArrayBuffer', function (done) {
+  it('should request string and respond Buffer', function (done) {
 
     this.timeout(5000);
 
     var filenameRespond = 'npm.svg', // 'github-timeout.png' 'github-git-cheat-sheet.pdf' 'npm.svg', 'npm.png'
-      ui8Respond = Uint8Array.from(fs.readFileSync('./test/fixtures/' + filenameRespond)),
-      arrayBufferRespond = ui8Respond.buffer;
+      bufferRespond = fs.readFileSync('./test/fixtures/' + filenameRespond);
 
     clientA = newClient(clientAId);
 
@@ -383,7 +388,7 @@ describe('MqttReqResClient', () => {
         assert.strictEqual(req.payload, 'foo');
 
         // now respond with file
-        res.send(arrayBufferRespond);
+        res.send(bufferRespond);
       }
       catch(e) {
         done(e);
@@ -396,14 +401,14 @@ describe('MqttReqResClient', () => {
       })
       .then(function (res) {
 
-        debug('clientA got response from cientB, res byteLength %d', res.payload.byteLength);
+        debug('clientA got response from cientB, res length %d', res.payload.length);
 
-        assert.strictEqual(res.type, 'ArrayBuffer');
-        assert.strictEqual(res.payload.byteLength, arrayBufferRespond.byteLength);
+        assert.strictEqual(res.type, 'Buffer');
+        assert.strictEqual(res.payload.length, bufferRespond.length);
 
         assert.deepEqual(
-          new Uint8Array(res.payload, 0, res.payload.byteLength), 
-          ui8Respond
+          res.payload.buffer,
+          bufferRespond.buffer
         );
 
         closeClients(clientA, clientB).then(() => done());

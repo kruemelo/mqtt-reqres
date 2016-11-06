@@ -196,7 +196,18 @@ f.event={add:function(a,c,d,e,g){var h,i,j,k,l,m,n,o,p,q,r,s;if(!(a.nodeType===3
         "pageTitle": "clientSpec",
         "title": "clientSpec"
       },
-      "depth": 1
+      "depth": 1,
+      "outline": [
+        {
+          "type": "heading",
+          "data": {
+            "level": 2,
+            "title": "clientSpec",
+            "slug": "clientspec"
+          },
+          "depth": 2
+        }
+      ]
     }, {
       "type": "folder",
       "data": {
@@ -406,8 +417,8 @@ f.event={add:function(a,c,d,e,g){var h,i,j,k,l,m,n,o,p,q,r,s;if(!(a.nodeType===3
                   "type": "heading",
                   "data": {
                     "level": 3,
-                    "title": "request(string toClientId, string|object|ArrayBuffer payload, object meta)",
-                    "slug": "requeststring-toclientid-stringobjectarraybuffer-payload-object-meta"
+                    "title": "request(string toClientId, string|object|Buffer payload, object meta)",
+                    "slug": "requeststring-toclientid-stringobjectbuffer-payload-object-meta"
                   },
                   "depth": 3
                 }, {
@@ -438,8 +449,8 @@ f.event={add:function(a,c,d,e,g){var h,i,j,k,l,m,n,o,p,q,r,s;if(!(a.nodeType===3
                   "type": "heading",
                   "data": {
                     "level": 3,
-                    "title": "sendResponse(object connection, string respondToRequestId, string|object|ArrayBuffer payload, object meta)",
-                    "slug": "sendresponseobject-connection-string-respondtorequestid-stringobjectarraybuffer-payload-object-meta"
+                    "title": "sendResponse(object connection, string respondToRequestId, string|object|Buffer payload, object meta)",
+                    "slug": "sendresponseobject-connection-string-respondtorequestid-stringobjectbuffer-payload-object-meta"
                   },
                   "depth": 3,
                   "children": [
@@ -619,7 +630,8 @@ f.event={add:function(a,c,d,e,g){var h,i,j,k,l,m,n,o,p,q,r,s;if(!(a.nodeType===3
         "pageTitle": "package",
         "title": "package"
       },
-      "depth": 1
+      "depth": 1,
+      "outline": []
     }
   ];
 
