@@ -84,10 +84,11 @@ respond with string "foo":
 clientB.onRequest(function (req, res) {
 
   /* called when received request 
-  req.type -> 'string', 'ArrayBuffer', 'JSON'
+  req.type -> the payload data type 'string', 'ArrayBuffer', 'JSON'
   req.payload -> typeof string, ArrayBuffer or Object
   req.connection -> connection object
   req.topic -> string mqtt topic
+  req.meta -> null|object meta object data
   */
 
   res.send('foo', {bar: 'baz'});

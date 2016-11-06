@@ -744,9 +744,7 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
   };</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mqttreqreshandlerequestmessagetopicpath-requestmessage">MqttReqRes.handleRequestMessage(topicPath, requestMessage)</h3></div></div></div><div class="segment"><div class="code"><div class="wrapper">  MqttReqRes.prototype.handleRequestMessage = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">topicPath, requestMessage</span>) </span>{
     </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>debug(&#39;%s handleRequestMessage(%s)&#39;, this.clientId, topicPath.join(&#39;/&#39;));</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">var</span> self = <span class="hljs-keyword">this</span>,
       fromClientId,
-      connection,
-      secret,
-      requestMessageId,
+      connection,</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>secret,</p></div></div><div class="code"><div class="wrapper">      requestMessageId,
       request = {
         errors: []
       };
@@ -799,12 +797,9 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
 
       fromClientId = topicPath[<span class="hljs-number">1</span>];
 
-      connection = <span class="hljs-keyword">this</span>.getConnection(fromClientId, <span class="hljs-literal">true</span>);
-      secret = <span class="hljs-keyword">this</span>.getSharedSecret(connection);
+      connection = <span class="hljs-keyword">this</span>.getConnection(fromClientId, <span class="hljs-literal">true</span>);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>secret = this.getSharedSecret(connection);</p></div></div><div class="code"><div class="wrapper">      requestMessageId = requestMessage.messageId;
 
-      requestMessageId = requestMessage.messageId;
-
-      <span class="hljs-keyword">this</span>.connect(fromClientId, secret)
+      <span class="hljs-keyword">this</span>.connect(fromClientId<span class="hljs-comment">/*, secret*/</span>)
         .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
           <span class="hljs-keyword">return</span> self.sendAck(connection, <span class="hljs-string">'request-ack'</span>, requestMessageId);
         })
@@ -1273,22 +1268,23 @@ return Promise.resolve when connected, sent and acked</p></div></div><div class=
           connection.topicReceive = <span class="hljs-literal">null</span>;
           connection.topicSend = <span class="hljs-literal">null</span>;</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ul>
 <li>subscribe topic to receive from A</li>
-</ul></div></div><div class="code"><div class="wrapper">          self.subscribeReceiveChannel(clientId)      
-            .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ul>
+</ul></div></div><div class="code"><div class="wrapper">          <span class="hljs-keyword">return</span> self.subscribeReceiveChannel(clientId);
+        })
+        .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ul>
 <li>send connack,channelNonce to A.handleConnectAck()</li>
-</ul></div></div><div class="code"><div class="wrapper">              <span class="hljs-keyword">return</span> self.publishConnectAck(clientId);
-            })
-            .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
-              <span class="hljs-keyword">if</span> (MqttReqRes.isConnected(connection)) {
-                self.emit(<span class="hljs-string">'client.connect'</span>, clientId);
-              }
-              <span class="hljs-keyword">else</span> {
-                debug(<span class="hljs-string">'failed to connect to client'</span>, connection);
-              }
-            });</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ul>
+</ul></div></div><div class="code"><div class="wrapper">          <span class="hljs-keyword">return</span> self.publishConnectAck(clientId);
+        })
+        .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+          <span class="hljs-keyword">if</span> (MqttReqRes.isConnected(connection)) {
+            self.emit(<span class="hljs-string">'client.connect'</span>, clientId);
+          }
+          <span class="hljs-keyword">else</span> {
+            debug(<span class="hljs-string">'failed to connect to client'</span>, connection);
+          }
+        })
+        .catch(noop);</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ul>
 <li>done</li>
-</ul></div></div><div class="code"><div class="wrapper">        });
-    }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ul>
+</ul></div></div><div class="code"><div class="wrapper">    }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ul>
 <li>else when connreqA === connack</li>
 </ul></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (connection.connack === reqMessage.connreq) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>connection already established</p>
 <ul>

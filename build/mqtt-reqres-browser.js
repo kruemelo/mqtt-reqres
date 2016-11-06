@@ -1120,7 +1120,7 @@ module.exports = function () {
     var self = this,
       fromClientId,
       connection,
-      secret,
+      // secret,
       requestMessageId,
       request = {
         errors: []
@@ -1180,11 +1180,11 @@ module.exports = function () {
       fromClientId = topicPath[1];
 
       connection = this.getConnection(fromClientId, true);
-      secret = this.getSharedSecret(connection);
+      // secret = this.getSharedSecret(connection);
 
       requestMessageId = requestMessage.messageId;
 
-      this.connect(fromClientId, secret)
+      this.connect(fromClientId/*, secret*/)
         .then(function() {
           return self.sendAck(connection, 'request-ack', requestMessageId);
         })
@@ -1815,21 +1815,22 @@ module.exports = function () {
           connection.topicSend = null;
 
           // - subscribe topic to receive from A
-          self.subscribeReceiveChannel(clientId)      
-            .then(function () {
-              // - send connack,channelNonce to A.handleConnectAck()
-              return self.publishConnectAck(clientId);
-            })
-            .then(function () {
-              if (MqttReqRes.isConnected(connection)) {
-                self.emit('client.connect', clientId);
-              }
-              else {
-                debug('failed to connect to client', connection);
-              }
-            });
-            // - done
-        });
+          return self.subscribeReceiveChannel(clientId);
+        })
+        .then(function () {
+          // - send connack,channelNonce to A.handleConnectAck()
+          return self.publishConnectAck(clientId);
+        })
+        .then(function () {
+          if (MqttReqRes.isConnected(connection)) {
+            self.emit('client.connect', clientId);
+          }
+          else {
+            debug('failed to connect to client', connection);
+          }
+        })
+        .catch(noop);
+        // - done
     }
     // - else when connreqA === connack
     else if (connection.connack === reqMessage.connreq) {
