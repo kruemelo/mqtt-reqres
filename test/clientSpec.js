@@ -568,6 +568,83 @@ describe('MqttReqResClient', () => {
   });
 
 
+  it('should request and respond in parallel', function (done) {
+
+    this.timeout(8000);
+
+    clientA = newClient(clientAId);
+
+    clientA.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    clientB = newClient(clientBId);
+
+    clientB.sharedSecret(function (clientId, callback) {
+      callback(sharedSecret);
+    });
+
+    // define request handler b
+    clientB.onRequest(function (req, res) {
+
+      clientB.request(clientAId, 'b-' + req.payload)
+        .then(function (result) {
+          return res.send('echo-' + result.payload);
+        })
+        .catch(pcatch);
+    });
+
+    // define request handler a
+    clientA.onRequest(function (req, res) {
+      res.send('a-' + req.payload)
+        .catch(pcatch);
+    });
+
+
+    clientB.connect()
+      .then(function () {
+        return clientA.connect(clientB.clientId);
+      })
+      .then(function() {
+
+        return new Promise(function (resolve, reject) {
+
+          var resultsDone = 0,
+            requestPayloads = Array.from({length: 42}, (v, k) => k);
+
+          requestPayloads.forEach(function (reqPayload) {
+
+            clientA.request(clientBId, 'payload-' + reqPayload)
+              .then(function (result) {
+
+                try {
+
+                  assert.strictEqual(
+                    result.payload, 
+                    'echo-a-b-payload-' + reqPayload
+                  );
+
+                  ++resultsDone;
+                  
+                  if (resultsDone === requestPayloads.length) {
+                    resolve();
+                  }
+                }
+                catch (e) {
+                  reject(e);
+                }
+              })
+              .catch(pcatch);
+          });
+        });
+      })
+      .then(function () {
+        closeClients(clientA, clientB).then(() => done());
+      })
+      .catch(pcatch);
+  });
+
+
   it('should disconnect a client', done => {
 
     var isConnected;

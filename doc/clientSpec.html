@@ -510,6 +510,77 @@ clientA.connect()
   });
 
 
+  it(<span class="hljs-string">'should request and respond in parallel'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">done</span>) </span>{
+
+    <span class="hljs-keyword">this</span>.timeout(<span class="hljs-number">8000</span>);
+
+    clientA = newClient(clientAId);
+
+    clientA.sharedSecret(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">clientId, callback</span>) </span>{
+      callback(sharedSecret);
+    });
+
+    clientB = newClient(clientBId);
+
+    clientB.sharedSecret(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">clientId, callback</span>) </span>{
+      callback(sharedSecret);
+    });</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>define request handler b</p></div></div><div class="code"><div class="wrapper">    clientB.onRequest(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">req, res</span>) </span>{
+
+      clientB.request(clientAId, <span class="hljs-string">'b-'</span> + req.payload)
+        .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">result</span>) </span>{
+          <span class="hljs-keyword">return</span> res.send(<span class="hljs-string">'echo-'</span> + result.payload);
+        })
+        .catch(pcatch);
+    });</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>define request handler a</p></div></div><div class="code"><div class="wrapper">    clientA.onRequest(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">req, res</span>) </span>{
+      res.send(<span class="hljs-string">'a-'</span> + req.payload)
+        .catch(pcatch);
+    });
+
+
+    clientB.connect()
+      .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+        <span class="hljs-keyword">return</span> clientA.connect(clientB.clientId);
+      })
+      .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve, reject</span>) </span>{
+
+          <span class="hljs-keyword">var</span> resultsDone = <span class="hljs-number">0</span>,
+            requestPayloads = <span class="hljs-built_in">Array</span>.from({length: <span class="hljs-number">42</span>}, (v, k) =&gt; k);
+
+          requestPayloads.forEach(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">reqPayload</span>) </span>{
+
+            clientA.request(clientBId, <span class="hljs-string">'payload-'</span> + reqPayload)
+              .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">result</span>) </span>{
+
+                <span class="hljs-keyword">try</span> {
+
+                  assert.strictEqual(
+                    result.payload, 
+                    <span class="hljs-string">'echo-a-b-payload-'</span> + reqPayload
+                  );
+
+                  ++resultsDone;
+                  
+                  <span class="hljs-keyword">if</span> (resultsDone === requestPayloads.length) {
+                    resolve();
+                  }
+                }
+                <span class="hljs-keyword">catch</span> (e) {
+                  reject(e);
+                }
+              })
+              .catch(pcatch);
+          });
+        });
+      })
+      .then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+        closeClients(clientA, clientB).then(() =&gt; done());
+      })
+      .catch(pcatch);
+  });
+
+
   it(<span class="hljs-string">'should disconnect a client'</span>, done =&gt; {
 
     <span class="hljs-keyword">var</span> isConnected;

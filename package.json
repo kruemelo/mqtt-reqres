@@ -1,11 +1,11 @@
 {
   "name": "mqtt-reqres",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "mqtt request/response client",
   "main": "./lib/mqtt-reqres.js",
   "scripts": {
     "test": "./node_modules/.bin/mocha test/clientSpec",
-    "test:debug": "DEBUG=clientSpec,mqtt-reqres,mqtt-reqres-broker ./node_modules/.bin/mocha",
+    "test:debug": "DEBUG=clientSpec,mqtt-reqres ./node_modules/.bin/mocha",
     "broker": "./node_modules/.bin/mqtt-reqres-broker start",
     "build": "npm run jshint && npm test && npm run browserify && npm run minify:browser && npm run build:docs",
     "jshint": "./node_modules/.bin/jshint lib/mqtt-reqres.js",

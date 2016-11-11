@@ -263,6 +263,17 @@ module.exports = function () {
   'use strict';
 
   // ### dependencies
+
+  /*
+  this is to browserify node Buffer 
+
+  when browserify, use Node >=5.10.0 to get the correct version
+
+  Buffer.from()
+  see:  https://nodejs.org/docs/latest-v5.x/api/buffer.html
+  */
+  var Buffer = require('buffer').Buffer;
+
   var mqtt = require('mqtt');
   // var EventEmitter = require('events');
   var EventEmitter = require('eventemitter2');
@@ -279,6 +290,7 @@ module.exports = function () {
   var MESSAGE_ID_LENGTH = 20; // 20
   var STREAM_ID_LENGTH = 10; // 10
   var CHUNK_ID_LENGTH = 10; // 10
+  var WAIT_FOR_ACK_TIMEOUT = 5000; // 5000
 
   var messageTypes = [
     'request',        
@@ -313,7 +325,11 @@ module.exports = function () {
     // call super constructor.
     EventEmitter.call(this);
 
+    this.setMaxListeners(100);
+
     this.options = options = options || {};
+
+    this.isOnConnectToBroker = false;
 
     this.initialize(options);
   }
@@ -325,6 +341,9 @@ module.exports = function () {
 
   // expose EventEmitter
   MqttReqRes.EventEmitter = EventEmitter;
+
+  // expose node Buffer
+  MqttReqRes.Buffer = Buffer;
 
 
   // ### MqttReqRes.randomString(length) 
@@ -413,6 +432,8 @@ module.exports = function () {
     debug('initialize()', options);
 
     var self = this;
+
+    this.isOnConnectToBroker = false;
 
     // remove all internal listeners
     this.removeAllListeners('_broker-connect');
@@ -503,7 +524,7 @@ module.exports = function () {
 
 
   // ### streamSend (connection, messageId, msgTargetProperty, payload)
-  // send a string|object|ArrayBuffer payload within an existing message
+  // send a string|object|Buffer payload within an existing message
   MqttReqRes.prototype.streamSend = function (connection, messageId, msgTargetProperty, payload) {
 
     // debug(
@@ -516,9 +537,9 @@ module.exports = function () {
       payloadLength,
       streamId = MqttReqRes.randomString(STREAM_ID_LENGTH);
     
-    if (payload instanceof ArrayBuffer) {
-      // ArrayBuffer
-      type = 'ArrayBuffer';
+    if (payload instanceof Buffer) {
+      // Buffer
+      type = 'Buffer';
     }
     else if (payload === null) {
       type = 'null';
@@ -531,7 +552,7 @@ module.exports = function () {
       type = 'string';
     }
     
-    debug('%s streamSend() type: %s', this.clientId, type);    
+    // debug('%s streamSend() type: %s', this.clientId, type);    
 
     if (type === 'JSON') {
       // payload as a JSON string
@@ -545,8 +566,7 @@ module.exports = function () {
       payload = 'null';
     }
 
-    payloadLength = (type === 'ArrayBuffer' ? 
-      payload.byteLength : payload.length);
+    payloadLength = payload.length;
 
 
     // _mqtt-message-stream: message-id, stream-id, message-target-property
@@ -555,15 +575,18 @@ module.exports = function () {
       // debug('%s sendStreamMessage() to %s', self.clientId, connection.clientId);
 
       try {
-        return self.mqttPublish(connection, 'stream', JSON.stringify({
-          messageId: messageId,
-          streamId: streamId,
-          type: type,
-          targetProperty: msgTargetProperty
-        }))
-        .then(function() {
-          return self.waitForAck('stream-ack', streamId);
-        });
+
+        return self.waitForAck(
+          connection,
+          'stream', 
+          streamId,
+          JSON.stringify({
+            messageId: messageId,
+            streamId: streamId,
+            type: type,
+            targetProperty: msgTargetProperty
+          })
+        );
       }
       catch (e) {
         debug(e);
@@ -587,7 +610,7 @@ module.exports = function () {
         function nextChunk () {
 
           var chunkStr,
-            chunkUint8Array;
+            chunkBuffer;
 
           chunkSize = remainingLength >= MAX_CHUNK_SIZE ?
             MAX_CHUNK_SIZE : remainingLength;
@@ -602,12 +625,11 @@ module.exports = function () {
           //   eos
           // );
 
-          if (type === 'ArrayBuffer') {
-            // chunk as Uint8Array
-            // new Uint8Array(buffer [, byteOffset [, length]]);
-            chunkUint8Array = new Uint8Array(payload, offset, chunkSize);
+          if (type === 'Buffer') {
+            // chunk 
+            chunkBuffer = payload.slice(offset, offset + chunkSize); 
 
-            chunkStr = chunkUint8Array.join(',');
+            chunkStr = chunkBuffer.join(',');
           }
           else {
             chunkStr = payload.substr(offset, chunkSize);
@@ -660,13 +682,15 @@ module.exports = function () {
 
       // debug('%s sendStreamEndMessage() to %s', self.clientId, connection.clientId);
 
-      return self.mqttPublish(connection, 'stream-end', JSON.stringify({
-        messageId: messageId,
-        streamId: streamId
-      }))
-      .then(function() {
-        return self.waitForAck('stream-end-ack', streamId);
-      });
+      return self.waitForAck(
+        connection,
+        'stream-end', 
+        streamId,
+        JSON.stringify({
+          messageId: messageId,
+          streamId: streamId
+        })
+      );
     }
 
 
@@ -683,7 +707,6 @@ module.exports = function () {
   MqttReqRes.prototype.streamSendChunk = function (connection, streamId, messageChunkStr) {
 
     var self = this,
-      req,
       // generate a chunk id
       chunkId = MqttReqRes.randomString(CHUNK_ID_LENGTH);
 
@@ -693,33 +716,21 @@ module.exports = function () {
     //   connection
     // );
 
-    // -mqtt-message-chunk: stream-id chunk-id payload
-    function publishChunk () {
-
-      // debug('%s publishChunk() to %s', self.clientId, connection.clientId);
-
-      try {
-
-        // build message object
-        req = {
-          streamId: streamId,
-          // chunk id
-          chunkId: chunkId,
-          payload: MqttReqRes.encrypt(messageChunkStr, connection.sharedSecret) 
-        };
-
-        return self.mqttPublish(connection, 'chunk', JSON.stringify(req));
-      }
-      catch (e) {
-        debug(e);
-        return Promise.reject(e);
-      }
-    }
-
     return this.connect(connection.clientId)
-      .then(publishChunk)
       .then(function () {
-        return self.waitForAck('chunk-ack', chunkId);
+
+        // -mqtt-message-chunk: stream-id chunk-id payload
+        return self.waitForAck(
+          connection,
+          'chunk', 
+          chunkId,
+          JSON.stringify({
+            streamId: streamId,
+            // chunk id
+            chunkId: chunkId,
+            payload: MqttReqRes.encrypt(messageChunkStr, connection.sharedSecret) 
+          })
+        );
       });
   };
 
@@ -730,6 +741,7 @@ module.exports = function () {
     //   '%s sendAck(%s, %s, toId %s)', this.clientId,
     //   connection.clientId, ackMessageName, toId
     // );
+
     var msgStr;
 
     try {
@@ -745,7 +757,7 @@ module.exports = function () {
   };  // sendAck
 
 
-  // ### waitForAck (ackMessageName, toId, [timeout=5000])
+  // ### waitForAck (connection, ackMessageName, toId, requestString, [timeout=WAIT_FOR_ACK_TIMEOUT])
   // generic wait for ack message
   // - chunk-ack: to-id
   // - stream-ack: to-id 
@@ -754,17 +766,17 @@ module.exports = function () {
   // - request-end-ack: to-id
   // - response-ack: to-id
   // - response-end-ack: to-id
-  MqttReqRes.prototype.waitForAck = function (ackMessageName, toId, timeout) {
+  MqttReqRes.prototype.waitForAck = function (connection, ackMessageName, toId, requestString, timeout) {
 
     var self = this,
-      ackEventName = '_mqtt-message-' + ackMessageName;
+      ackEventName = '_mqtt-message-' + ackMessageName + '-ack';
 
-    timeout = timeout || 5000;
+    timeout = timeout || WAIT_FOR_ACK_TIMEOUT;
 
-    debug(
-      '%s waitForAck(%s, %s, %d)', this.clientId,
-      ackMessageName, toId, timeout
-    );
+    // debug(
+    //   '%s waitForAck(%s, %s, %d)', this.clientId,
+    //   ackMessageName, toId, timeout
+    // );
 
     return new Promise (function (resolve, reject) {
 
@@ -786,11 +798,18 @@ module.exports = function () {
 
         self.on(ackEventName, handleAck);
 
+        self.mqttPublish(connection, ackMessageName, requestString)
+          .catch(reject);
+
         // reject on timeout
         setTimeout(function () {
           if (!acked) {
             self.removeListener(ackEventName, handleAck);
             reject(new Error('EACKTIMEOUT'));
+            debug(
+              '%s waitForAck(%s, %s, %d) - timed out', self.clientId,
+              ackMessageName, toId, timeout
+            );            
           }
         }, timeout);     
     });
@@ -811,6 +830,7 @@ module.exports = function () {
 
     return new Promise (function (resolve, reject) {
       try {
+
         // pubish message
         self.mqttClient.publish(        
           connection.topicSend + subTopic, 
@@ -834,11 +854,11 @@ module.exports = function () {
   };  // mqttPublish
 
 
-  // ### request(string toClientId, string|object|ArrayBuffer payload, object meta)
+  // ### request(string toClientId, string|object|Buffer payload, object meta)
   // A: request
   MqttReqRes.prototype.request = function (toClientId, payload, meta) {
 
-    debug('%s request(%s)', this.clientId, toClientId);
+    // debug('%s request(%s)', this.clientId, toClientId);
 
     var self = this,
       messageId = MqttReqRes.randomString(MESSAGE_ID_LENGTH),
@@ -853,13 +873,13 @@ module.exports = function () {
           return Promise.reject(new Error('ECLIENTCONNECTION'));
         }
 
-        return self.mqttPublish(connection, 'request', JSON.stringify({
-          messageId: messageId
-        }));
+        return self.waitForAck(
+          connection,
+          'request', 
+          messageId,
+          JSON.stringify({messageId: messageId})  
+        );
       })
-      .then(function () {
-        return self.waitForAck('request-ack', messageId);
-      })      
       .then(function () {
         if (typeof meta !== 'object') {
           // meta object is optional
@@ -873,12 +893,12 @@ module.exports = function () {
         return self.streamSend(connection, messageId, 'payload', payload);
       })
       .then(function () {
-        self.mqttPublish(connection, 'request-end', JSON.stringify({
-          messageId: messageId
-        }));
-      })
-      .then(function () {
-        return self.waitForAck('request-end-ack', messageId);
+        return self.waitForAck(
+          connection,
+          'request-end', 
+          messageId,
+          JSON.stringify({messageId: messageId})
+        );
       })
       .then(function () {
         return self.waitForResponse(connection, messageId);
@@ -1012,7 +1032,7 @@ module.exports = function () {
 
         chunkData = MqttReqRes.decrypt(mqttChunkMessage.payload, connection.sharedSecret);
 
-        if (type === 'ArrayBuffer') {
+        if (type === 'Buffer') {
          
           if (streamResult === null) {
             streamResult = [];
@@ -1078,8 +1098,8 @@ module.exports = function () {
         
         try {
 
-          if (type === 'ArrayBuffer') {
-            streamResult = Uint8Array.from(streamResult).buffer;
+          if (type === 'Buffer') {
+            streamResult = Buffer.from(streamResult);
           }
           else if (type === 'JSON') {
             streamResult = JSON.parse(streamResult);
@@ -1120,7 +1140,6 @@ module.exports = function () {
     var self = this,
       fromClientId,
       connection,
-      // secret,
       requestMessageId,
       request = {
         errors: []
@@ -1184,7 +1203,7 @@ module.exports = function () {
 
       requestMessageId = requestMessage.messageId;
 
-      this.connect(fromClientId/*, secret*/)
+      this.connect(fromClientId)
         .then(function() {
           return self.sendAck(connection, 'request-ack', requestMessageId);
         })
@@ -1217,7 +1236,12 @@ module.exports = function () {
           };
 
           // call request handler
-          self.fnOnRequest(req, res);
+          try {
+            self.fnOnRequest(req, res);
+          }
+          catch (e) {
+            debug(e);
+          }
 
         })
         .catch(function (reason) {
@@ -1235,24 +1259,23 @@ module.exports = function () {
   };
 
 
-  // ### sendResponse(object connection, string respondToRequestId, string|object|ArrayBuffer payload, object meta)
+  // ### sendResponse(object connection, string respondToRequestId, string|object|Buffer payload, object meta)
   MqttReqRes.prototype.sendResponse = function (connection, respondToRequestId, payload, meta) {
 
-    debug('%s sendResponse(%s, %s)', this.clientId, connection.clientId, respondToRequestId);
+    // debug('%s sendResponse(%s, %s)', this.clientId, connection.clientId, respondToRequestId);
 
     var self = this,
       messageId = MqttReqRes.randomString(MESSAGE_ID_LENGTH);
 
     return this.connect(connection.clientId)
       .then(function() {
-        return self.mqttPublish(connection, 'response', JSON.stringify({
-          messageId: messageId,
-          respondsTo: respondToRequestId
-        }));
+        return self.waitForAck(
+          connection,
+          'response', 
+          messageId,
+          JSON.stringify({messageId: messageId, respondsTo: respondToRequestId})
+        );        
       })
-      .then(function () {
-        return self.waitForAck('response-ack', messageId);
-      })      
       .then(function () {
         if (typeof meta !== 'object') {
           // meta object is optional
@@ -1266,12 +1289,12 @@ module.exports = function () {
         return self.streamSend(connection, messageId, 'payload', payload);
       })
       .then(function () {
-        self.mqttPublish(connection, 'response-end', JSON.stringify({
-          messageId: messageId
-        }));
-      })
-      .then(function () {
-        return self.waitForAck('response-end-ack', messageId);
+        return self.waitForAck(
+          connection,
+          'response-end', 
+          messageId,
+          JSON.stringify({messageId: messageId})
+        );
       });
   };
 
@@ -1284,13 +1307,21 @@ module.exports = function () {
   */   
   MqttReqRes.prototype.connect = function (toClientId, sharedSecret) {
 
-    debug('%s connect(%s)', this.clientId, toClientId);
+    // debug('%s connect(%s)', this.clientId, toClientId);
     
     var self = this,
+      connection;
+
+    if (toClientId) {
+      
       connection = this.getConnection(toClientId);
 
-    if (MqttReqRes.isConnected(connection)) {
-      return Promise.resolve();
+      if (self.mqttClient && 
+          self.mqttClient.connected && 
+          MqttReqRes.isConnected(connection)
+        ) {
+        return Promise.resolve();
+      }      
     }
 
     // connect to broker
@@ -1312,9 +1343,9 @@ module.exports = function () {
     #### connectToBroker()
     connect to broker
   */
-  MqttReqRes.prototype.connectToBroker = function () {
+  MqttReqRes.prototype.connectToBroker = function (retryCounter) {
 
-    debug('%s connectToBroker()', this.clientId);
+    // debug('%s connectToBroker()', this.clientId);
 
     var self = this;
 
@@ -1328,11 +1359,35 @@ module.exports = function () {
         return;
       }
 
+      if (self.isOnConnectToBroker) {
+
+        retryCounter = Number.isInteger(retryCounter) || 0;
+
+        if (retryCounter > 10) {
+          reject(new Error('EONCONNECTBROKER'));
+        }
+        else {
+
+          // debug('%s connectToBroker() retry %d', self.clientId, retryCounter);
+          
+          setTimeout(function () {
+            self.connectToBroker(retryCounter + 1)
+              .then(resolve)
+              .catch(reject);
+          }, (retryCounter + 1) * 1000);          
+        }
+        return;
+      }
+
+      self.isOnConnectToBroker = true;
+
       // reset subsciption to connect flag
       self.subscribedConnect = false;
       self.isWaitingForMqttClientMessages = false;
 
       // connect to broker
+      // debug('%s connectToBroker() call mqtt.connect()', self.clientId);
+
       self.mqttClient = mqtt.connect({ 
           protocol: self.brokerProtocol,
           host: self.brokerHostname, 
@@ -1340,7 +1395,9 @@ module.exports = function () {
           clientId: self.clientId
         });
 
+
       function onConnect () {
+
         self.emit(
           '_broker-connect', 
           // connack packet
@@ -1350,7 +1407,9 @@ module.exports = function () {
       
       self.mqttClient.on('connect', onConnect); 
 
+
       function onBrokerConnect () {
+
         connectSuccess = true;
         self.removeListener('connect', onConnect);
         self.removeListener('_broker-connect', onBrokerConnect);
@@ -1358,18 +1417,32 @@ module.exports = function () {
         // subscribe to connect topic
         self.subscribeConnect()
           .then(function () {
-             self.emit('broker.connect');
-             resolve();
+
+            self.isOnConnectToBroker = false;
+
+            self.emit('broker.connect');
+    
+            resolve();
           })
-          .catch(reject);
+          .catch(function (reason) {
+    
+            self.isOnConnectToBroker = false;
+    
+            reject(reason);
+          });
       }
 
       self.once('_broker-connect', onBrokerConnect);
 
+
       setTimeout(function () {
+
         if (!connectSuccess) {
           self.removeListener('connect', onConnect);
           self.removeListener('_broker-connect', onBrokerConnect);          
+
+          self.isOnConnectToBroker = false;
+
           reject(new Error('EMQTTCLIENTCONNECTTIMEOUT'));
         }
       }, 3000);
@@ -1383,7 +1456,7 @@ module.exports = function () {
   */
   MqttReqRes.prototype.subscribeConnect = function () {
 
-    debug('%s subscribeConnect()', this.clientId);
+    // debug('%s subscribeConnect()', this.clientId);
 
     var self = this,
       topic = 'connect/' + this.clientId + '/+';
@@ -1491,7 +1564,7 @@ module.exports = function () {
 
             self.removeListener('_client-connack', handleClientConnack);
 
-            debug('%s client connect in connectToClient()', self.clientId, toClientId);   
+            // debug('%s client connect in connectToClient()', self.clientId, toClientId);   
 
             //     - set connack = connreq
             connection.connack = connection.connreq;
@@ -1527,11 +1600,18 @@ module.exports = function () {
         
         // reject on timeout
         setTimeout(function () {
+          
           if (!resolved) {
+          
             self.removeListener('_client-connack', handleClientConnack);
+            
+            if (MqttReqRes.isConnected(connection)) {
+              return resolve(toClientId);
+            }            
+          
             reject(new Error('ECLIENTCONNACKTIMEOUT'));
           }
-        }, 10000);
+        }, 5000);
       });
     }
 
@@ -1552,7 +1632,7 @@ module.exports = function () {
           return Promise.resolve(toClientId);
         }
         else {
-          debug('failed to connect to client', connection);
+          // debug('failed to connect to client', connection);
           return Promise.reject(new Error('ECLIENTCONNECT'));
         }
       });
@@ -1561,7 +1641,7 @@ module.exports = function () {
 
   MqttReqRes.prototype.ping = function (toClientId) {
 
-    debug('%s ping(%s)', this.clientId, toClientId);
+    // debug('%s ping(%s)', this.clientId, toClientId);
 
     var self = this,
       messageId = MqttReqRes.randomString(MESSAGE_ID_LENGTH),
@@ -1576,12 +1656,12 @@ module.exports = function () {
           return Promise.reject(new Error('ECLIENTCONNECTION'));
         }
 
-        return self.mqttPublish(connection, 'ping', JSON.stringify({
-          messageId: messageId
-        }));
-      })
-      .then(function () {
-        return self.waitForAck('ping-ack', messageId);
+        return self.waitForAck(
+          connection,
+          'ping', 
+          messageId,
+          JSON.stringify({messageId: messageId})
+        );
       });
   };
 
@@ -1642,7 +1722,7 @@ module.exports = function () {
    */
   MqttReqRes.prototype.handlePingRequest = function (topicPath, message) {
 
-    debug('%s handlePingRequest', this.clientId, message.messageId);
+    // debug('%s handlePingRequest', this.clientId, message.messageId);
     
     try {
 
@@ -1668,7 +1748,7 @@ module.exports = function () {
   // ### MqttReqRes.handleMqttClientMessage(topic, mqttMessage) 
   MqttReqRes.prototype.handleMqttClientMessage = function (topic, mqttMessage) {
 
-    debug('%s handleMqttClientMessage(%s)', this.clientId, topic);
+    // debug('%s handleMqttClientMessage(%s)', this.clientId, topic);
 
     var topicPath = topic.split('/'),
       message,
@@ -1714,12 +1794,12 @@ module.exports = function () {
             topicPath, 
             message
           );
-          debug(
-            '%s emitted %s , %s', this.clientId, 
-            topicPath.join('/'), 
-            '_mqtt-message-' + messageTypes[messageTypeIndex]
-            // message
-          );
+          // debug(
+          //   '%s emitted %s , %s', this.clientId, 
+          //   topicPath.join('/'), 
+          //   '_mqtt-message-' + messageTypes[messageTypeIndex]
+          //   // message
+          // );
         }
         else {
           throw(new Error('EMESSAGETYPE'));
@@ -1745,7 +1825,7 @@ module.exports = function () {
 
     // B handleConnectRequest (reqMessage{connreqA, channelNonceA})
 
-    debug('%s handleConnectRequest(%s)', this.clientId, topicPath.join('/'));
+    // debug('%s handleConnectRequest(%s)', this.clientId, topicPath.join('/'));
 
     var self = this,
       clientId,
@@ -1908,19 +1988,21 @@ module.exports = function () {
         channelNonce: connection.channelNonce
       });
 
-      self.mqttClient.publish(
-        topic,
-        message, 
-        {qos: 0, retain: false}, 
-        function (err) {
-          if (err) {
-            reject(err);
+      setTimeout(function () {
+        self.mqttClient.publish(
+          topic,
+          message, 
+          {qos: 0, retain: false}, 
+          function (err) {
+            if (err) {
+              reject(err);
+            }
+            else {
+              resolve(clientId);            
+            }
           }
-          else {
-            resolve(clientId);            
-          }
-        }
-      );
+        );
+      }, 10);
     });      
   };
 
@@ -1965,7 +2047,7 @@ module.exports = function () {
   */
   MqttReqRes.prototype.subscribeReceiveChannel = function (clientId) {
 
-    debug('%s subscribeReceiveChannel(%s)', this.clientId, clientId);
+    // debug('%s subscribeReceiveChannel(%s)', this.clientId, clientId);
 
     var self = this;
 
@@ -2025,37 +2107,43 @@ module.exports = function () {
   */
   MqttReqRes.prototype.publishConnectRequest = function (clientId) {
 
-    debug('%s publishConnectRequest(%s)', this.clientId, clientId);
+    // debug('%s publishConnectRequest(%s)', this.clientId, clientId);
 
     var self = this;
 
     return new Promise (function (resolve, reject) {
       
-      // get connected client 
-      var connection = self.getConnection(clientId, true),
-        topic,
-        message;
+      try {
 
-      topic = 'connect/' + clientId + '/' + self.clientId;
+        // get connected client 
+        var connection = self.getConnection(clientId, true),
+          topic,
+          message;
 
-      message = JSON.stringify({
-        connreq: connection.connreq,
-        channelNonce: connection.channelNonce
-      });
+        topic = 'connect/' + clientId + '/' + self.clientId;
 
-      self.mqttClient.publish(
-        topic,
-        message, 
-        {qos: 0, retain: false}, 
-        function (err) {
-          if (err) {
-            reject(err);
+        message = JSON.stringify({
+          connreq: connection.connreq,
+          channelNonce: connection.channelNonce
+        });
+
+        self.mqttClient.publish(
+          topic,
+          message, 
+          {qos: 0, retain: false}, 
+          function (err) {
+            if (err) {
+              reject(err);
+            }
+            else {
+              resolve(clientId);            
+            }
           }
-          else {
-            resolve(clientId);            
-          }
-        }
-      );
+        );
+      }
+      catch (e) {
+        reject(e);
+      }
     });
   };
 
@@ -2172,10 +2260,9 @@ module.exports = function () {
 
 
   return MqttReqRes;
-
 }();
 
-},{"./crypto-js/cryptojs-module.js":1,"debug":10,"eventemitter2":15,"mqtt":26}],3:[function(require,module,exports){
+},{"./crypto-js/cryptojs-module.js":1,"buffer":58,"debug":10,"eventemitter2":15,"mqtt":26}],3:[function(require,module,exports){
 (function (Buffer){
 var DuplexStream = require('readable-stream/duplex')
   , util         = require('util')
