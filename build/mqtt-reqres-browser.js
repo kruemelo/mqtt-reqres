@@ -544,7 +544,7 @@ module.exports = function () {
     else if (payload === null) {
       type = 'null';
     }
-    else if (payload instanceof Object) {
+    else if (payload instanceof Object || Array.isArray(payload)) {
       type = 'JSON';
     }
     else {

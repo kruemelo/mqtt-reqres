@@ -275,7 +275,7 @@ length, and that contain only the characters 0-9a-Z</p></div></div><div class="c
     <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (payload === <span class="hljs-literal">null</span>) {
       type = <span class="hljs-string">'null'</span>;
     }
-    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (payload <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">Object</span>) {
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (payload <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">Object</span> || <span class="hljs-built_in">Array</span>.isArray(payload)) {
       type = <span class="hljs-string">'JSON'</span>;
     }
     <span class="hljs-keyword">else</span> {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>string instanceof Object -&gt; false</p></div></div><div class="code"><div class="wrapper">      type = <span class="hljs-string">'string'</span>;
